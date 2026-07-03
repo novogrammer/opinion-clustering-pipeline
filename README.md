@@ -4,7 +4,7 @@
 
 - Python `3.11`
 - 仮想環境は `venv`
-- 依存管理は `requirements.txt`
+- 依存管理は `requirements.in` + `requirements.txt`
 
 案件ごとの入力データと生成成果物は `projects/` 配下に分けて置く。
 
@@ -58,4 +58,19 @@ projects/support_voice_nps_wave1/
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+依存管理ルール:
+
+- `requirements.in` は人が編集する最小依存
+- `requirements.txt` は固定版の lock ファイル
+- `requirements.txt` は `pip-compile` で `requirements.in` から生成する
+- 通常のセットアップは `pip install -r requirements.txt`
+- `requirements.in` を編集したら `requirements.txt` を再生成する
+
+`requirements.txt` の再生成:
+
+```bash
+source .venv/bin/activate
+pip-compile requirements.in -o requirements.txt
 ```

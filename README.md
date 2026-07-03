@@ -1,12 +1,14 @@
 # Opinion Clustering Pipeline
 
-実装前提:
+## 前提
 
 - Python `3.11`
 - 仮想環境は `venv`
 - 依存管理は `requirements.in` + `requirements.txt`
 
 案件ごとの入力データと生成成果物は `projects/` 配下に分けて置く。
+
+## ディレクトリ構成
 
 推奨構成:
 
@@ -52,7 +54,9 @@ projects/support_voice_nps_wave1/
 
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。
 
-セットアップ例:
+## 環境構築
+
+セットアップ:
 
 ```bash
 python3.11 -m venv .venv
@@ -60,7 +64,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-依存管理ルール:
+## 依存管理
+
+ルール:
 
 - `requirements.in` は人が編集する最小依存
 - `requirements.txt` は固定版の lock ファイル

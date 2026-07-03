@@ -63,5 +63,6 @@ projects/
 `projects/` 配下の案件データと生成成果物は、原則 Git 管理しない。管理対象は `docs/`、コード、必要なら匿名化済みサンプルだけに絞る。
 
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。
+案件ディレクトリは template から作成し、共通スクリプトは `scripts/` 配下の CLI として呼び出す前提とする。
 
 詳細仕様は `docs/classification_pipeline_spec.md` を参照。

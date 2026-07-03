@@ -60,6 +60,7 @@ projects/
 - `docs/` は全案件共通の方針と仕様を置く
 - `projects/{project_name}/` は案件固有データと成果物を置く
 - 案件をまたいで再利用するコードは、今後 `src/` や `scripts/` に分離する
+- 案件開始時のフォルダ作成はコマンドで都度行うのではなく、template から作る前提とする
 - 段階をフォルダ名で明示し、案件の進行順が見えるようにする
 - 連番を付けて並び順を固定する
 - `00_raw` から `02_screening` までは案件全体で共有する
@@ -79,6 +80,63 @@ support_voice_nps_wave1
 - 日付や wave 番号など、後で識別に必要な情報を含める
 - 表記ゆれを防ぐため案件開始時に固定する
 - ディレクトリ名としてそのまま使う
+
+template 方針:
+
+- 案件ディレクトリのひな形を別途 template として用意する
+- 新規案件は template を複製して `projects/{project_name}/` を作る
+- 工程スクリプトはフォルダ作成を責務に持たず、既存ディレクトリに対して入出力を行う
+
+---
+
+## コマンドI/F
+
+この時点で固定する外部I/F は以下。
+
+### 01_processed
+
+この段階には共通コマンドを用意しない。  
+案件ごとの整形は Codex 依頼または個別スクリプトで行い、完成物だけを以下にそろえる。
+
+- 出力: `projects/{project_name}/01_processed/responses_normalized.csv`
+
+### 02_screening
+
+```bash
+python scripts/screening.py \
+  --input projects/{project_name}/01_processed/responses_normalized.csv \
+  --output projects/{project_name}/02_screening/screened_responses.csv
+```
+
+- 入力: `responses_normalized.csv`
+- 出力: `screened_responses.csv`
+
+### 03_embeddings
+
+```bash
+python scripts/embeddings.py \
+  --input projects/{project_name}/02_screening/screened_responses.csv \
+  --question-id {question_id} \
+  --output-dir projects/{project_name}/questions/{question_id}/03_embeddings \
+  --model text-embedding-3-small
+```
+
+- 入力: `screened_responses.csv`
+- 出力ディレクトリ: `03_embeddings/`
+- 出力ファイル: `embedding_requests.csv`, `embeddings.npy`, `embedding_metadata.json`
+
+### 04_clustering
+
+```bash
+python scripts/clustering.py \
+  --input projects/{project_name}/questions/{question_id}/03_embeddings/embedding_requests.csv \
+  --embeddings projects/{project_name}/questions/{question_id}/03_embeddings/embeddings.npy \
+  --output-dir projects/{project_name}/questions/{question_id}/04_clustering
+```
+
+- 入力: `embedding_requests.csv`, `embeddings.npy`
+- 出力ディレクトリ: `04_clustering/`
+- 出力ファイル: `clusters.csv`, `cluster_summary.csv`
 
 ---
 
@@ -241,6 +299,11 @@ Git 管理するもの:
 - 無回答や対象外レコードも件数管理のため残す
 - 初期ルールは文字列一致や記号判定で決まるものに絞る
 - 文脈解釈が必要な判定は、この段階では扱わない
+- 最初は単純なルールで始め、必要が出たら `02_screening` のスクリプトを更新していく
+- 無回答候補の辞書は、初期運用では別ファイルに分けず `02_screening` のスクリプト内に持つ
+- `02_screening` の共通スクリプトは `scripts/` 配下に置く
+- 入力CSVと出力CSVのパスは CLI 引数で渡す
+- 標準の受け渡しCSV名は `responses_normalized.csv` と `screened_responses.csv` に固定する
 
 初期判定フロー:
 

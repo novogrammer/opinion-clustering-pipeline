@@ -207,16 +207,26 @@ Codex に依頼する内容の例:
 - 最初の4列は `01_processed` をそのまま引き継ぐ
 - `is_target` は分類対象なら `true`、対象外なら `false`
 - `screening_reason` は対象外理由や判定理由を記録する
+- 初期運用では `screened_responses.csv` の1ファイルで管理する
 
-`screening_reason` の例:
+初期運用で使う `screening_reason`:
 
 ```txt
-non_response
 blank
+non_response
 symbol_only
-too_short
 target
 ```
+
+初期方針:
+
+- `blank`: 空文字
+- `non_response`: `なし`、`特になし`、`n/a` などの実質無回答
+- `symbol_only`: 記号のみ
+- `target`: 分類対象
+
+この段階では `too_short` は使わない。  
+短文が有効回答かどうかは判断を要するため、初期ルールから外す。
 
 ---
 

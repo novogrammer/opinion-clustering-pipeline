@@ -33,4 +33,6 @@ projects/support_voice_nps_wave1/
 
 `02_screening/screened_responses.csv` は、`01_processed` の列を引き継ぎつつ `is_target` と `screening_reason` を追加する想定。
 
+初期運用では `screened_responses.csv` を1本で管理し、`screening_reason` は `target`, `blank`, `non_response`, `symbol_only` の4種類を使う。
+
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。

@@ -1,4 +1,4 @@
-# Projects Directory
+# Opinion Clustering Pipeline
 
 案件ごとの入力データと生成成果物は `projects/` 配下に分けて置く。
 
@@ -41,5 +41,7 @@ projects/support_voice_nps_wave1/
 `01_processed/responses_normalized.csv` は、CSV / UTF-8 / 1行1回答 / 4列固定の状態になっていれば次段階へ進める。
 
 `03_embeddings` は `02_screening/screened_responses.csv` のうち `is_target = true` の行だけを使う。`embedding_requests.csv` の最小列は `response_id`, `question_id`, `embedding_input_text`。
+
+`projects/` 配下の案件データと生成成果物は、原則 Git 管理しない。管理対象は `docs/`、コード、必要なら匿名化済みサンプルだけに絞る。
 
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。

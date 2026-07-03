@@ -1,0 +1,6 @@
+# macOS
+.DS_Store
+
+# Project data and generated artifacts
+projects/*
+!projects/.gitkeep

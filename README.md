@@ -1,5 +1,11 @@
 # Opinion Clustering Pipeline
 
+実装前提:
+
+- Python `3.11`
+- 仮想環境は `venv`
+- 依存管理は `requirements.txt`
+
 案件ごとの入力データと生成成果物は `projects/` 配下に分けて置く。
 
 推奨構成:
@@ -45,3 +51,11 @@ projects/support_voice_nps_wave1/
 `projects/` 配下の案件データと生成成果物は、原則 Git 管理しない。管理対象は `docs/`、コード、必要なら匿名化済みサンプルだけに絞る。
 
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。
+
+セットアップ例:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```

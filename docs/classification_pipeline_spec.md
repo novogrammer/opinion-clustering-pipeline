@@ -214,6 +214,9 @@ Git 管理するもの:
 
 `01_processed -> 02_screening` で、分類対象に入れるかどうかを判定する。
 
+初期運用では、`02_screening` は Codex や共通スクリプトから実行する自動判定を前提とする。  
+ここで行うのは、文字列ルールで決まる単純なスクリーニングに限る。
+
 この段階で扱うもの:
 
 - 無回答判定
@@ -236,6 +239,48 @@ Git 管理するもの:
 - 判定結果は `02_screening` に保存する
 - クラスタリングと分類には、分類対象レコードだけを流す
 - 無回答や対象外レコードも件数管理のため残す
+- 初期ルールは文字列一致や記号判定で決まるものに絞る
+- 文脈解釈が必要な判定は、この段階では扱わない
+
+初期判定フロー:
+
+1. `answer_text` の前後空白を除去する
+2. 空文字なら `is_target=false`, `screening_reason=blank`
+3. 正規化後の文字列が無回答辞書に完全一致したら `is_target=false`, `screening_reason=non_response`
+4. 記号だけで構成されていたら `is_target=false`, `screening_reason=symbol_only`
+5. それ以外は `is_target=true`, `screening_reason=target`
+
+この段階で無理にやらないこと:
+
+- 短文だから対象外とみなす判定
+- 設問文との意味関係を見て有効回答か判断すること
+- 皮肉、婉曲表現、文脈依存の実質無回答を判定すること
+
+`non_response` の初期候補例:
+
+```txt
+なし
+特になし
+とくになし
+ない
+わからない
+なしです
+n/a
+na
+no answer
+```
+
+`symbol_only` の例:
+
+```txt
+-
+--
+---
+?
+??
+...
+/
+```
 
 `screened_responses.csv` の想定カラム:
 

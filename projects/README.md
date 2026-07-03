@@ -35,4 +35,6 @@ projects/support_voice_nps_wave1/
 
 初期運用では `screened_responses.csv` を1本で管理し、`screening_reason` は `target`, `blank`, `non_response`, `symbol_only` の4種類を使う。
 
+`01_processed/responses_normalized.csv` は、CSV / UTF-8 / 1行1回答 / 4列固定の状態になっていれば次段階へ進める。
+
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。

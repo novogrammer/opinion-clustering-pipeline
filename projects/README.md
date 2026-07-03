@@ -9,10 +9,11 @@ projects/
   {project_name}/
     00_raw/
     01_processed/
-    02_embeddings/
-    03_clustering/
-    04_classification/
-    05_review/
+    02_screening/
+    03_embeddings/
+    04_clustering/
+    05_classification/
+    06_review/
     99_logs/
 ```
 
@@ -26,5 +27,10 @@ projects/support_voice_nps_wave1/
 `project_name` はディレクトリ名としてそのまま使う。半角英数字と `_` を基本にし、案件開始時に固定する。
 
 各フォルダは段階を表す。連番を付けることで、案件を開いたときに進行順がそのまま分かる。
+
+- `01_processed` は判断なしの整形結果
+- `02_screening` で無回答や分類対象外を判定する
+
+`02_screening/screened_responses.csv` は、`01_processed` の列を引き継ぎつつ `is_target` と `screening_reason` を追加する想定。
 
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。

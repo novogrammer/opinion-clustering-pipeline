@@ -10,10 +10,12 @@ projects/
     00_raw/
     01_processed/
     02_screening/
-    03_embeddings/
-    04_clustering/
-    05_classification/
-    06_review/
+    questions/
+      {question_id}/
+        03_embeddings/
+        04_clustering/
+        05_classification/
+        06_review/
     99_logs/
 ```
 
@@ -30,6 +32,7 @@ projects/support_voice_nps_wave1/
 
 - `01_processed` は判断なしの整形結果
 - `02_screening` で無回答や分類対象外を判定する
+- `03_embeddings` 以降は `questions/{question_id}/` 配下で設問ごとに進める
 
 `02_screening/screened_responses.csv` は、`01_processed` の列を引き継ぎつつ `is_target` と `screening_reason` を追加する想定。
 

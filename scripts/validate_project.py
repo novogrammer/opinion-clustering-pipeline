@@ -44,7 +44,6 @@ def main() -> None:
     questions_dir = project_dir / "questions"
     question_dirs = sorted(path for path in questions_dir.iterdir() if path.is_dir()) if questions_dir.exists() else []
     project_log_paths = [
-        project_dir / "99_logs" / "pipeline.log",
         project_dir / "99_logs" / "raw_to_processed.log",
         project_dir / "99_logs" / "screening.log",
     ]

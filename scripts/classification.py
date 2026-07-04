@@ -20,17 +20,6 @@ CATEGORY_MASTER_COLUMNS = [
     "example_positive",
     "example_negative",
 ]
-OVERRIDE_RULE_COLUMNS = [
-    "rule_id",
-    "question_id",
-    "match_type",
-    "pattern",
-    "override_category_id",
-    "override_category_name",
-    "needs_human_review",
-    "priority",
-    "note",
-]
 FINAL_LABEL_COLUMNS = [
     "response_id",
     "question_id",
@@ -132,86 +121,6 @@ def run_category_master_validations(df: pd.DataFrame) -> list[str]:
     return errors
 
 
-def validate_override_match_type(df: pd.DataFrame) -> list[str]:
-    allowed = {"exact", "contains", "regex"}
-    invalid_rows = [
-        str(index + 1)
-        for index, value in enumerate(df["match_type"].astype(str).str.lower())
-        if value not in allowed
-    ]
-    if not invalid_rows:
-        return []
-    return [f"Invalid match_type values at rows: {', '.join(invalid_rows)}"]
-
-
-def validate_override_boolean_column(df: pd.DataFrame, column: str) -> list[str]:
-    allowed = {"true", "false"}
-    invalid_rows = [
-        str(index + 1)
-        for index, value in enumerate(df[column].astype(str).str.lower())
-        if value not in allowed
-    ]
-    if not invalid_rows:
-        return []
-    return [f"Invalid boolean values in {column} at rows: {', '.join(invalid_rows)}"]
-
-
-def validate_override_priority(df: pd.DataFrame) -> list[str]:
-    errors: list[str] = []
-    for idx, value in enumerate(df["priority"], start=1):
-        try:
-            parsed = int(value)
-        except (TypeError, ValueError):
-            errors.append(f"Invalid priority at row {idx}: {value}")
-            continue
-        if parsed < 0:
-            errors.append(f"Negative priority at row {idx}: {value}")
-    return errors
-
-
-def validate_override_required_text(df: pd.DataFrame, columns: list[str]) -> list[str]:
-    errors: list[str] = []
-    for column in columns:
-        blank_mask = df[column].map(lambda value: str(value).strip() == "")
-        count = int(blank_mask.sum())
-        if count > 0:
-            errors.append(f"Blank values found in {column}: {count}")
-    return errors
-
-
-def validate_no_duplicate_rule_ids(df: pd.DataFrame) -> list[str]:
-    duplicate_mask = df["rule_id"].duplicated(keep=False)
-    duplicates = df.loc[duplicate_mask, "rule_id"].tolist()
-    if not duplicates:
-        return []
-    joined = ", ".join(dict.fromkeys(duplicates))
-    return [f"Duplicate rule_id values found: {joined}"]
-
-
-def run_override_rule_validations(df: pd.DataFrame) -> list[str]:
-    errors: list[str] = []
-    errors.extend(
-        validate_override_required_text(
-            df,
-            [
-                "rule_id",
-                "question_id",
-                "match_type",
-                "pattern",
-                "override_category_id",
-                "override_category_name",
-                "needs_human_review",
-                "priority",
-            ],
-        )
-    )
-    errors.extend(validate_no_duplicate_rule_ids(df))
-    errors.extend(validate_override_match_type(df))
-    errors.extend(validate_override_boolean_column(df, "needs_human_review"))
-    errors.extend(validate_override_priority(df))
-    return errors
-
-
 def validate_no_duplicate_response_ids(df: pd.DataFrame) -> list[str]:
     duplicate_mask = df["response_id"].duplicated(keep=False)
     duplicates = df.loc[duplicate_mask, "response_id"].tolist()
@@ -270,10 +179,6 @@ def run_final_label_validations(df: pd.DataFrame) -> list[str]:
     return errors
 
 
-def parse_bool(value: object) -> bool:
-    return str(value).strip().lower() == "true"
-
-
 def score_category(answer_text: str, keywords: list[str], exclude_keywords: list[str]) -> tuple[int, list[str], list[str]]:
     normalized_answer = normalize_text(answer_text).casefold()
     matched = [keyword for keyword in keywords if keyword and keyword.casefold() in normalized_answer]
@@ -303,86 +208,11 @@ def format_candidate_summary(candidate: dict[str, object] | None) -> str:
     )
 
 
-def load_override_rules(path: Path | None, question_id: str) -> list[dict[str, object]]:
-    if path is None or not path.exists():
-        return []
-    override_df = read_csv(path)
-    validate_required_columns(override_df, OVERRIDE_RULE_COLUMNS)
-    filtered = override_df[override_df["question_id"].astype(str).isin([question_id, "*"])].copy()
-    if len(filtered) == 0:
-        return []
-
-    def parse_priority(value: object) -> int:
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return 9999
-
-    filtered["priority_int"] = filtered["priority"].map(parse_priority)
-    filtered = filtered.sort_values(by=["priority_int", "rule_id"], ascending=[True, True], kind="stable")
-
-    rules: list[dict[str, object]] = []
-    for _, row in filtered.iterrows():
-        rules.append(
-            {
-                "rule_id": str(row["rule_id"]).strip(),
-                "match_type": str(row["match_type"]).strip().lower(),
-                "pattern": str(row["pattern"]).strip(),
-                "override_category_id": str(row["override_category_id"]).strip(),
-                "override_category_name": str(row["override_category_name"]).strip(),
-                "needs_human_review": parse_bool(row["needs_human_review"]),
-                "priority": int(row["priority_int"]),
-                "note": str(row["note"]).strip(),
-            }
-        )
-    return rules
-
-
-def matches_override_rule(answer_text: str, rule: dict[str, object]) -> bool:
-    normalized = normalize_text(answer_text)
-    normalized_casefold = normalized.casefold()
-    pattern = str(rule["pattern"])
-    match_type = str(rule["match_type"])
-
-    if match_type == "exact":
-        return normalized_casefold == normalize_text(pattern).casefold()
-    if match_type == "contains":
-        return normalize_text(pattern).casefold() in normalized_casefold
-    if match_type == "regex":
-        return re.search(pattern, normalized) is not None
-    return False
-
-
-def apply_override_rule(answer_text: str, override_rules: list[dict[str, object]]) -> dict[str, object] | None:
-    for rule in override_rules:
-        if not matches_override_rule(answer_text, rule):
-            continue
-        note = str(rule["note"]).strip() or "none"
-        return {
-            "predicted_category_id": rule["override_category_id"],
-            "predicted_category_name": rule["override_category_name"],
-            "confidence": 1.0,
-            "reason": (
-                f"override_rule={rule['rule_id']} "
-                f"match_type={rule['match_type']} "
-                f"pattern={rule['pattern']} "
-                f"note={note}"
-            ),
-            "needs_human_review": bool(rule["needs_human_review"]),
-        }
-    return None
-
-
 def classify_row(
     answer_text: str,
     categories: list[dict[str, object]],
     confidence_threshold: float,
-    override_rules: list[dict[str, object]],
 ) -> dict[str, object]:
-    override_result = apply_override_rule(answer_text, override_rules)
-    if override_result is not None:
-        return override_result
-
     candidates: list[dict[str, object]] = []
     for category in categories:
         score, matched, excluded = score_category(
@@ -465,7 +295,6 @@ def build_final_labels_df(
     categories: list[dict[str, object]],
     question_id: str,
     confidence_threshold: float,
-    override_rules: list[dict[str, object]],
 ) -> pd.DataFrame:
     filtered = responses_df[
         (responses_df["question_id"] == question_id)
@@ -476,7 +305,6 @@ def build_final_labels_df(
             answer_text=str(answer_text),
             categories=categories,
             confidence_threshold=confidence_threshold,
-            override_rules=override_rules,
         )
     )
     for column in FINAL_LABEL_COLUMNS[3:]:
@@ -498,7 +326,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path, help="Path to screened_responses.csv")
     parser.add_argument("--question-id", required=True, help="Target question_id")
     parser.add_argument("--category-master", required=True, type=Path, help="Path to category master CSV")
-    parser.add_argument("--override-rules", type=Path, default=None, help="Optional path to manual_override_rules.csv")
     parser.add_argument("--output", required=True, type=Path, help="Path to final_labels.csv")
     parser.add_argument("--confidence-threshold", type=float, default=0.6)
     parser.add_argument("--log", type=Path, default=None, help="Optional path to append execution logs as JSONL")
@@ -520,24 +347,12 @@ def main() -> None:
         raise SystemExit("\n".join(category_master_errors))
 
     categories = build_categories_df(category_master_df)
-    override_rules_path = args.override_rules
-    if override_rules_path is None:
-        default_override_rules = args.category_master.parent / "manual_override_rules.csv"
-        override_rules_path = default_override_rules if default_override_rules.exists() else None
-    if override_rules_path is not None:
-        override_rules_df = read_csv(override_rules_path)
-        validate_required_columns(override_rules_df, OVERRIDE_RULE_COLUMNS)
-        override_rule_errors = run_override_rule_validations(override_rules_df)
-        if override_rule_errors:
-            raise SystemExit("\n".join(override_rule_errors))
-    override_rules = load_override_rules(override_rules_path, args.question_id)
 
     final_labels_df = build_final_labels_df(
         responses_df=responses_df,
         categories=categories,
         question_id=args.question_id,
         confidence_threshold=args.confidence_threshold,
-        override_rules=override_rules,
     )
     final_label_errors = run_final_label_validations(final_labels_df)
     final_label_errors.extend(validate_predicted_category_ids(final_labels_df, category_master_df))
@@ -553,7 +368,6 @@ def main() -> None:
                 "output": str(args.output),
                 "question_id": args.question_id,
                 "row_count": int(len(final_labels_df)),
-                "override_rule_count": int(len(override_rules)),
                 "created_at": utc_now_iso(),
             },
             args.log,

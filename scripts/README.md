@@ -34,14 +34,12 @@ python scripts/review.py --input projects/your_project_name/questions/Q1/05_clas
 
 各ステージは主成果物を書き出す前に自己検査し、不整合な成果物を残さない。
 
-## 検査
+## 任意の横断検査
 
 ```bash
-python scripts/validate_processed.py --input projects/your_project_name/01_processed/responses_normalized.csv
-python scripts/validate_screening.py --input projects/your_project_name/02_screening/screened_responses.csv
 python scripts/validate_question.py --question-dir projects/your_project_name/questions/Q1
 python scripts/validate_project.py --project-dir projects/your_project_name
-python scripts/validate_log.py --input projects/your_project_name/99_logs/pipeline.log
+python scripts/validate_log.py --input projects/your_project_name/99_logs/raw_to_processed.log
 ```
 
 `validate_question.py` は stage-aware で、未着手の後段成果物までは要求しない。  

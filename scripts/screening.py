@@ -247,43 +247,18 @@ def build_screened_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Apply initial screening rules to normalized responses.")
-    parser.add_argument("--input", required=True, type=Path, help="Path to normalized or screened CSV")
-    parser.add_argument("--validate", action="store_true", help="Validate an existing screened_responses.csv")
+    parser.add_argument("--input", required=True, type=Path, help="Path to responses_normalized.csv")
     parser.add_argument("--output", type=Path, default=None, help="Path to screened_responses.csv")
     parser.add_argument("--log", type=Path, default=None, help="Optional path to append execution logs as JSONL")
     return parser
-
-
-def validate_dataframe(df: pd.DataFrame, *, input_path: Path, log_path: Path | None = None) -> list[str]:
-    validate_required_columns(df, SCREENED_COLUMNS)
-    errors = run_validations(df)
-    if log_path is not None:
-        append_jsonl(
-            {
-                "event": "validate_screened_responses",
-                "input": str(input_path),
-                "row_count": int(len(df)),
-                "success": len(errors) == 0,
-                "errors": errors,
-                "created_at": utc_now_iso(),
-            },
-            log_path,
-        )
-    return errors
 
 
 def main() -> None:
     args = build_parser().parse_args()
     df = read_csv(args.input)
 
-    if args.validate:
-        errors = validate_dataframe(df, input_path=args.input, log_path=args.log)
-        if errors:
-            raise SystemExit("\n".join(errors))
-        return
-
     if args.output is None:
-        raise SystemExit("--output is required unless --validate is used")
+        raise SystemExit("--output is required")
 
     validate_required_columns(df, REQUIRED_RESPONSE_COLUMNS)
     processed_errors = run_processed_validations(df)

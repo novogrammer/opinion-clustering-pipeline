@@ -272,9 +272,7 @@ def build_normalized_df(df: pd.DataFrame, args: argparse.Namespace) -> tuple[pd.
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Normalize one raw CSV into 01_processed/responses_normalized.csv")
-    parser.add_argument("--input", required=True, type=Path, help="Path to raw CSV or responses_normalized.csv")
-    parser.add_argument("--validate", action="store_true", help="Validate an existing responses_normalized.csv")
-    parser.add_argument("--log", type=Path, default=None, help="Optional path to append validation results as JSONL")
+    parser.add_argument("--input", required=True, type=Path, help="Path to raw CSV")
     parser.add_argument("--output", type=Path, default=None, help="Path to responses_normalized.csv")
     parser.add_argument("--mapping-log", type=Path, default=None, help="Path to raw_to_processed_mapping.md")
     parser.add_argument("--run-log", type=Path, default=None, help="Path to raw_to_processed.log")
@@ -292,36 +290,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def validate_dataframe(df: pd.DataFrame, *, input_path: Path, log_path: Path | None = None) -> list[str]:
-    validate_required_columns(df, REQUIRED_RESPONSE_COLUMNS)
-    errors = run_validations(df)
-    if log_path is not None:
-        append_jsonl(
-            {
-                "event": "validate_processed",
-                "input": str(input_path),
-                "row_count": int(len(df)),
-                "success": len(errors) == 0,
-                "errors": errors,
-                "created_at": utc_now_iso(),
-            },
-            log_path,
-        )
-    return errors
-
-
 def main() -> None:
     args = build_parser().parse_args()
     df = read_csv(args.input)
 
-    if args.validate:
-        errors = validate_dataframe(df, input_path=args.input, log_path=args.log)
-        if errors:
-            raise SystemExit("\n".join(errors))
-        return
-
     if args.output is None or args.mapping_log is None or args.run_log is None:
-        raise SystemExit("--output, --mapping-log, and --run-log are required unless --validate is used")
+        raise SystemExit("--output, --mapping-log, and --run-log are required")
 
     normalized_df, source_column_map = build_normalized_df(df, args)
     errors = run_validations(normalized_df)

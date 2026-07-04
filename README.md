@@ -75,7 +75,6 @@ projects/
 - 生CSVの標準化は `normalize.py --input ...`
 - 以降の工程は `screening.py` から `review.py` までを順に実行する
 - `init_project.py` と `init_question.py` は sample 成果物を複製しない
-- stage 個別 validator と横断 validator も直接実行できる正式I/Fとして扱う
 
 標準フロー:
 
@@ -98,7 +97,7 @@ python scripts/review.py --input projects/your_project_name/questions/Q1/05_clas
 `embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`completed` / `failed` の状態に合わない成果物を書き出さない。
 `clustering` も入力 `screened_responses.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv` と `clustering_metadata.json` の不整合を書き出さない。
 `classification` も入力 `screened_responses.csv` と `category_master.csv`、生成物 `final_labels.csv` を自己検査し、不整合を書き出さない。
-標準フローの `classification.py` は単一ラベル分類を前提とし、override ルールは任意入力として扱う。
+標準フローの `classification.py` は単一ラベル分類を前提とする。
 
 補助成果物:
 
@@ -107,14 +106,12 @@ python scripts/review.py --input projects/your_project_name/questions/Q1/05_clas
 - `03_embeddings/embedding_failures.csv` (失敗時のみ)
 - `04_clustering/clustering_metadata.json`
 
-検査例:
+任意の横断検査:
 
 ```bash
-python scripts/validate_processed.py --input projects/your_project_name/01_processed/responses_normalized.csv
-python scripts/validate_screening.py --input projects/your_project_name/02_screening/screened_responses.csv
 python scripts/validate_question.py --question-dir projects/your_project_name/questions/Q1
 python scripts/validate_project.py --project-dir projects/your_project_name
-python scripts/validate_log.py --input projects/your_project_name/99_logs/pipeline.log
+python scripts/validate_log.py --input projects/your_project_name/99_logs/raw_to_processed.log
 ```
 
 `validate_question.py` は進んでいる段階までを前提に検査する。  

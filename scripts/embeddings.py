@@ -13,14 +13,12 @@ from openai import OpenAI
 from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv, write_json
 from validate_embedding_failures import run_validations as run_embedding_failure_validations
 from validate_embedding_metadata import run_validations as run_embedding_metadata_validations
-from validate_embedding_requests import run_validations as run_embedding_request_validations
 from validate_embeddings_array import run_validations as run_embeddings_array_validations
 from validate_screened_responses import run_validations as run_screened_validations
 
 
 INPUT_TEMPLATE_VERSION = "v1"
 PREPROCESSING_VERSION = "screened_responses_v1"
-REQUEST_COLUMNS = ["response_id", "question_id", "embedding_input_text"]
 FAILURE_COLUMNS = ["response_id", "question_id", "embedding_input_text", "error_type", "error_message"]
 EMBEDDING_INPUT_TEMPLATE = "設問ID: {question_id}\n質問: {question_text}\n回答: {answer_text}"
 
@@ -41,7 +39,7 @@ def build_embedding_input(question_id: str, question_text: str, answer_text: str
     )
 
 
-def build_requests(df: pd.DataFrame, question_id: str) -> pd.DataFrame:
+def build_target_rows(df: pd.DataFrame, question_id: str) -> pd.DataFrame:
     filtered = df[(df["question_id"] == question_id) & (df["is_target"].astype(str).str.lower() == "true")].copy()
     filtered["embedding_input_text"] = filtered.apply(
         lambda row: build_embedding_input(
@@ -51,7 +49,7 @@ def build_requests(df: pd.DataFrame, question_id: str) -> pd.DataFrame:
         ),
         axis=1,
     )
-    return filtered[REQUEST_COLUMNS]
+    return filtered[["response_id", "question_id", "embedding_input_text"]]
 
 
 def build_failure_rows(batch_df: pd.DataFrame, exc: Exception) -> pd.DataFrame:
@@ -63,7 +61,7 @@ def build_failure_rows(batch_df: pd.DataFrame, exc: Exception) -> pd.DataFrame:
 
 def request_embeddings(
     client: OpenAI,
-    requests_df: pd.DataFrame,
+    targets_df: pd.DataFrame,
     model: str,
     batch_size: int,
     max_retries: int,
@@ -73,17 +71,15 @@ def request_embeddings(
     vectors: list[list[float]] = []
     failure_frames: list[pd.DataFrame] = []
 
-    for start in range(0, len(requests_df), batch_size):
-        batch_df = requests_df.iloc[start : start + batch_size].copy()
+    for start in range(0, len(targets_df), batch_size):
+        batch_df = targets_df.iloc[start : start + batch_size].copy()
         batch = batch_df["embedding_input_text"].tolist()
         attempt = 0
         while True:
             try:
                 response = client.embeddings.create(model=model, input=batch)
                 if len(response.data) != len(batch):
-                    raise ValueError(
-                        f"Embedding response count mismatch: {len(response.data)} != {len(batch)}"
-                    )
+                    raise ValueError(f"Embedding response count mismatch: {len(response.data)} != {len(batch)}")
                 vectors.extend(item.embedding for item in response.data)
                 break
             except Exception as exc:  # noqa: BLE001
@@ -105,8 +101,7 @@ def request_embeddings(
                 if attempt >= max_retries:
                     failure_frames.append(build_failure_rows(batch_df, exc))
                     break
-                sleep_seconds = retry_base_seconds * (2**attempt)
-                time.sleep(sleep_seconds)
+                time.sleep(retry_base_seconds * (2**attempt))
                 attempt += 1
 
     failures_df = pd.concat(failure_frames, ignore_index=True) if failure_frames else pd.DataFrame(columns=FAILURE_COLUMNS)
@@ -116,7 +111,6 @@ def request_embeddings(
 def build_metadata_payload(
     *,
     screened_input_path: Path,
-    requests_path: Path,
     model: str,
     question_id: str,
     row_count: int,
@@ -130,28 +124,17 @@ def build_metadata_payload(
         "row_count": row_count,
         "input_screened_path": str(screened_input_path),
         "input_screened_sha1": file_sha1(screened_input_path),
-        "input_requests_path": str(requests_path),
-        "input_requests_sha1": file_sha1(requests_path),
         "input_template_version": INPUT_TEMPLATE_VERSION,
         "input_template": EMBEDDING_INPUT_TEMPLATE,
         "preprocessing_version": PREPROCESSING_VERSION,
         "batch_size": batch_size,
         "failed_count": failed_count,
-        "created_at": utc_now_iso(),
         "status": status,
+        "created_at": utc_now_iso(),
     }
 
 
-def requests_match(existing_path: Path, new_requests_df: pd.DataFrame) -> bool:
-    if not existing_path.exists():
-        return False
-    existing_df = read_csv(existing_path)
-    existing_df = existing_df[REQUEST_COLUMNS].fillna("")
-    new_df = new_requests_df[REQUEST_COLUMNS].fillna("")
-    return existing_df.equals(new_df)
-
-
-def metadata_matches(existing_path: Path, *, model: str, question_id: str, batch_size: int, status: str) -> bool:
+def metadata_matches(existing_path: Path, *, model: str, question_id: str, batch_size: int) -> bool:
     if not existing_path.exists():
         return False
     payload = json.loads(existing_path.read_text(encoding="utf-8"))
@@ -162,17 +145,11 @@ def metadata_matches(existing_path: Path, *, model: str, question_id: str, batch
         and payload.get("input_template") == EMBEDDING_INPUT_TEMPLATE
         and payload.get("preprocessing_version") == PREPROCESSING_VERSION
         and payload.get("batch_size") == batch_size
-        and payload.get("status") == status
     )
 
 
-def remove_if_exists(path: Path) -> None:
-    if path.exists():
-        path.unlink()
-
-
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate embedding requests and embeddings for one question.")
+    parser = argparse.ArgumentParser(description="Generate embeddings for one question.")
     parser.add_argument("--input", required=True, type=Path, help="Path to screened_responses.csv")
     parser.add_argument("--question-id", required=True, help="Target question_id")
     parser.add_argument("--output-dir", required=True, type=Path, help="Path to 03_embeddings directory")
@@ -182,11 +159,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--retry-base-seconds", type=float, default=1.0, help="Base sleep seconds for exponential backoff")
     parser.add_argument("--log", type=Path, default=None, help="Optional path to append execution logs as JSONL")
     parser.add_argument("--force", action="store_true", help="Regenerate artifacts even if matching outputs already exist")
-    parser.add_argument(
-        "--prepare-only",
-        action="store_true",
-        help="Write embedding_requests.csv and metadata only, without calling the Embeddings API",
-    )
     return parser.parse_args()
 
 
@@ -199,38 +171,37 @@ def main() -> None:
     if screened_errors:
         raise SystemExit("\n".join(screened_errors))
 
-    requests_df = build_requests(df, args.question_id)
-    request_errors = run_embedding_request_validations(requests_df)
-    if request_errors:
-        raise SystemExit("\n".join(request_errors))
+    targets_df = build_target_rows(df, args.question_id)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    requests_path = args.output_dir / "embedding_requests.csv"
     embeddings_path = args.output_dir / "embeddings.npy"
     metadata_path = args.output_dir / "embedding_metadata.json"
     failures_path = args.output_dir / "embedding_failures.csv"
 
-    if args.prepare_only:
+    if (
+        not args.force
+        and metadata_matches(
+            metadata_path,
+            model=args.model,
+            question_id=args.question_id,
+            batch_size=args.batch_size,
+        )
+        and embeddings_path.exists()
+        and not failures_path.exists()
+    ):
+        metadata_payload = json.loads(metadata_path.read_text(encoding="utf-8"))
         if (
-            not args.force
-            and requests_match(requests_path, requests_df)
-            and metadata_matches(
-                metadata_path,
-                model=args.model,
-                question_id=args.question_id,
-                batch_size=args.batch_size,
-                status="prepared",
-            )
-            and not embeddings_path.exists()
-            and not failures_path.exists()
+            metadata_payload.get("status") == "completed"
+            and metadata_payload.get("row_count") == int(len(targets_df))
+            and metadata_payload.get("input_screened_sha1") == file_sha1(args.input)
         ):
             if args.log is not None:
                 append_jsonl(
                     {
-                        "event": "embeddings_prepare_reused",
+                        "event": "embeddings_reused",
                         "input": str(args.input),
                         "output_dir": str(args.output_dir),
                         "question_id": args.question_id,
-                        "row_count": int(len(requests_df)),
+                        "row_count": int(len(targets_df)),
                         "model": args.model,
                         "batch_size": args.batch_size,
                         "created_at": utc_now_iso(),
@@ -239,85 +210,19 @@ def main() -> None:
                 )
             return
 
-        write_csv(requests_df, requests_path)
-        remove_if_exists(embeddings_path)
-        remove_if_exists(failures_path)
-        if args.log is not None:
-            append_jsonl(
-                {
-                    "event": "embeddings_prepare",
-                    "input": str(args.input),
-                    "output_dir": str(args.output_dir),
-                    "question_id": args.question_id,
-                    "row_count": int(len(requests_df)),
-                    "model": args.model,
-                    "batch_size": args.batch_size,
-                    "created_at": utc_now_iso(),
-                },
-                args.log,
-            )
-        metadata_payload = build_metadata_payload(
-            screened_input_path=args.input,
-            requests_path=requests_path,
-            model=args.model,
-            question_id=args.question_id,
-            row_count=int(len(requests_df)),
-            batch_size=args.batch_size,
-            failed_count=0,
-            status="prepared",
-        )
-        metadata_errors = run_embedding_metadata_validations(
-            metadata_payload,
-            screened_path=args.input,
-            requests_path=requests_path,
-            embeddings_path=embeddings_path,
-            failures_path=failures_path,
-        )
-        if metadata_errors:
-            raise SystemExit("\n".join(metadata_errors))
-        write_json(metadata_payload, metadata_path)
-        return
-
-    if (
-        not args.force
-        and requests_match(requests_path, requests_df)
-        and metadata_matches(
-            metadata_path,
-            model=args.model,
-            question_id=args.question_id,
-            batch_size=args.batch_size,
-            status="completed",
-        )
-        and embeddings_path.exists()
-        and not failures_path.exists()
-    ):
-        if args.log is not None:
-            append_jsonl(
-                {
-                    "event": "embeddings_reused",
-                    "input": str(args.input),
-                    "output_dir": str(args.output_dir),
-                    "question_id": args.question_id,
-                    "row_count": int(len(requests_df)),
-                    "model": args.model,
-                    "batch_size": args.batch_size,
-                    "created_at": utc_now_iso(),
-                },
-                args.log,
-            )
-        return
-
-    write_csv(requests_df, requests_path)
-    remove_if_exists(failures_path)
+    if failures_path.exists():
+        failures_path.unlink()
+    if embeddings_path.exists():
+        embeddings_path.unlink()
 
     client = OpenAI()
-    if len(requests_df) == 0:
+    if len(targets_df) == 0:
         embeddings = np.empty((0, 0), dtype=np.float32)
         failures_df = pd.DataFrame(columns=FAILURE_COLUMNS)
     else:
         embeddings, failures_df = request_embeddings(
             client=client,
-            requests_df=requests_df,
+            targets_df=targets_df,
             model=args.model,
             batch_size=args.batch_size,
             max_retries=args.max_retries,
@@ -330,26 +235,11 @@ def main() -> None:
         if failure_errors:
             raise SystemExit("\n".join(failure_errors))
         write_csv(failures_df, failures_path)
-        if args.log is not None:
-            append_jsonl(
-                {
-                    "event": "embeddings_failed",
-                    "input": str(args.input),
-                    "output_dir": str(args.output_dir),
-                    "question_id": args.question_id,
-                    "row_count": int(len(requests_df)),
-                    "failed_count": int(len(failures_df)),
-                    "model": args.model,
-                    "created_at": utc_now_iso(),
-                },
-                args.log,
-            )
         metadata_payload = build_metadata_payload(
             screened_input_path=args.input,
-            requests_path=requests_path,
             model=args.model,
             question_id=args.question_id,
-            row_count=int(len(requests_df)),
+            row_count=int(len(targets_df)),
             batch_size=args.batch_size,
             failed_count=int(len(failures_df)),
             status="failed",
@@ -357,47 +247,37 @@ def main() -> None:
         metadata_errors = run_embedding_metadata_validations(
             metadata_payload,
             screened_path=args.input,
-            requests_path=requests_path,
             embeddings_path=embeddings_path,
             failures_path=failures_path,
         )
         if metadata_errors:
             raise SystemExit("\n".join(metadata_errors))
         write_json(metadata_payload, metadata_path)
-        raise SystemExit(
-            f"Embedding requests failed after retries. See {failures_path}"
-        )
+        if args.log is not None:
+            append_jsonl(
+                {
+                    "event": "embeddings_failed",
+                    "input": str(args.input),
+                    "output_dir": str(args.output_dir),
+                    "question_id": args.question_id,
+                    "row_count": int(len(targets_df)),
+                    "failed_count": int(len(failures_df)),
+                    "model": args.model,
+                    "created_at": utc_now_iso(),
+                },
+                args.log,
+            )
+        raise SystemExit(f"Embedding requests failed after retries. See {failures_path}")
 
     np.save(embeddings_path, embeddings)
-    embedding_array_errors = run_embeddings_array_validations(
-        embeddings,
-        request_row_count=int(len(requests_df)),
-        metadata_row_count=int(len(requests_df)),
-        metadata_status="completed",
-    )
+    embedding_array_errors = run_embeddings_array_validations(embeddings, metadata_status="completed")
     if embedding_array_errors:
         raise SystemExit("\n".join(embedding_array_errors))
-    if args.log is not None:
-        append_jsonl(
-            {
-                "event": "embeddings",
-                "input": str(args.input),
-                "output_dir": str(args.output_dir),
-                "question_id": args.question_id,
-                "row_count": int(len(requests_df)),
-                "model": args.model,
-                "batch_size": args.batch_size,
-                "created_at": utc_now_iso(),
-            },
-            args.log,
-        )
-
     metadata_payload = build_metadata_payload(
         screened_input_path=args.input,
-        requests_path=requests_path,
         model=args.model,
         question_id=args.question_id,
-        row_count=int(len(requests_df)),
+        row_count=int(len(targets_df)),
         batch_size=args.batch_size,
         failed_count=0,
         status="completed",
@@ -405,13 +285,26 @@ def main() -> None:
     metadata_errors = run_embedding_metadata_validations(
         metadata_payload,
         screened_path=args.input,
-        requests_path=requests_path,
         embeddings_path=embeddings_path,
         failures_path=failures_path,
     )
     if metadata_errors:
         raise SystemExit("\n".join(metadata_errors))
     write_json(metadata_payload, metadata_path)
+    if args.log is not None:
+        append_jsonl(
+            {
+                "event": "embeddings",
+                "input": str(args.input),
+                "output_dir": str(args.output_dir),
+                "question_id": args.question_id,
+                "row_count": int(len(targets_df)),
+                "model": args.model,
+                "batch_size": args.batch_size,
+                "created_at": utc_now_iso(),
+            },
+            args.log,
+        )
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ projects/
 - `01_processed` は判断なしの整形結果
 - `02_screening` で無回答や分類対象外を文字列ルールで自動判定する
 - `02_screening` では文脈解釈をせず、空欄、定型無回答、記号のみを機械的に切り分ける
-- `02_screening` では重複回答の監査用抽出もできる
+- `02_screening` では重複情報も `screened_responses.csv` に統合する
 - `05_classification` はカテゴリマスタを使ったルールベース分類の土台まで実装済み
 - `03_embeddings` 以降は `questions/{question_id}/` 配下で設問ごとに進める
 
@@ -86,10 +86,8 @@ python scripts/pipeline.py init-project --project-name your_project_name
 python scripts/pipeline.py init-question --project-name your_project_name --question-id Q1
 python scripts/pipeline.py normalize --project-name your_project_name --input projects/your_project_name/00_raw/source.csv --response-id-col 回答ID --question-id-col 設問ID --question-text-col 質問文 --answer-text-col 自由回答
 python scripts/pipeline.py screening --project-name your_project_name
-python scripts/pipeline.py duplicate-check --project-name your_project_name
-python scripts/pipeline.py embeddings --project-name your_project_name --question-id Q1 --prepare-only
+python scripts/pipeline.py embeddings --project-name your_project_name --question-id Q1
 python scripts/pipeline.py clustering --project-name your_project_name --question-id Q1
-python scripts/pipeline.py scaffold-category-master --project-name your_project_name --question-id Q1
 python scripts/pipeline.py classification --project-name your_project_name --question-id Q1
 python scripts/pipeline.py review --project-name your_project_name --question-id Q1
 ```
@@ -98,26 +96,17 @@ python scripts/pipeline.py review --project-name your_project_name --question-id
 それは内部作業であり、公開I/Fには含めない。
 
 `normalize` は出力前に `responses_normalized.csv` の必須条件を自己検査し、重複 `response_id` や必須列空欄があれば失敗させる。
-`screening` も出力前に `screened_responses.csv` を自己検査し、`screening_reason` と `is_target` の不整合を書き出さない。
-`duplicate-check` も出力前に `duplicate_responses.csv` を自己検査し、group 内件数や canonical 行の不整合を書き出さない。
-`embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`prepared` / `completed` / `failed` の状態に合わない成果物を書き出さない。
-`clustering` も入力 `embedding_requests.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv`、`cluster_summary.csv`、`clustering_metadata.json` の不整合を書き出さない。
-`classification` も入力 `screened_responses.csv`、`category_master.csv`、必要時の `manual_override_rules.csv` と生成物 `final_labels.csv` を自己検査し、不整合を書き出さない。
-override 候補系も `review_corrections.csv`、`manual_override_candidates.csv`、`manual_override_rules.csv`、`override_rule_hits.csv`、`override_rule_summary.csv` の整合を自己検査し、不整合を書き出さない。
+`screening` も出力前に `screened_responses.csv` を自己検査し、`screening_reason` と `is_target` の不整合や重複情報の不整合を書き出さない。
+`embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`completed` / `failed` の状態に合わない成果物を書き出さない。
+`clustering` も入力 `screened_responses.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv` と `clustering_metadata.json` の不整合を書き出さない。
+`classification` も入力 `screened_responses.csv` と `category_master.csv`、生成物 `final_labels.csv` を自己検査し、不整合を書き出さない。
 
 補助成果物:
 
-- `05_classification/`
-  - `category_conflicts.csv`
-  - `manual_override_candidates.csv`
-  - `manual_override_rules.csv`
-  - `override_rule_hits.csv`
-  - `override_rule_summary.csv`
-- `06_review/`
-  - `review_summary.csv`
-  - `category_review_priorities.csv`
-  - `review_samples.csv`
-  - `review_corrections.csv`
+- `99_logs/raw_to_processed_mapping.md`
+- `03_embeddings/embedding_metadata.json`
+- `03_embeddings/embedding_failures.csv` (失敗時のみ)
+- `04_clustering/clustering_metadata.json`
 
 検査例:
 

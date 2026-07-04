@@ -4,8 +4,6 @@ import argparse
 from pathlib import Path
 
 from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns
-from duplicate_common import DUPLICATE_OUTPUT_COLUMNS
-from validate_duplicate_responses import run_validations as run_duplicate_response_validations
 from validate_jsonl_log import run_validations as run_jsonl_log_validations
 from validate_processed import run_validations as run_processed_validations
 from validate_question_artifacts import collect_question_errors
@@ -42,7 +40,6 @@ def main() -> None:
 
     processed_path = project_dir / "01_processed" / "responses_normalized.csv"
     screened_path = project_dir / "02_screening" / "screened_responses.csv"
-    duplicate_path = project_dir / "02_screening" / "duplicate_responses.csv"
     mapping_path = project_dir / "99_logs" / "raw_to_processed_mapping.md"
     questions_dir = project_dir / "questions"
     question_dirs = sorted(path for path in questions_dir.iterdir() if path.is_dir()) if questions_dir.exists() else []
@@ -52,36 +49,23 @@ def main() -> None:
         project_dir / "99_logs" / "screening.log",
     ]
 
-    project_started = stage_has_any(
-        [processed_path, screened_path, duplicate_path, mapping_path, *project_log_paths]
-    ) or bool(question_dirs)
+    project_started = stage_has_any([processed_path, screened_path, mapping_path, *project_log_paths]) or bool(question_dirs)
+    screening_required = screened_path.exists() or bool(question_dirs)
 
     if project_started and not processed_path.exists():
         errors.append(f"Missing file: {processed_path}")
+    if screening_required and not screened_path.exists():
+        errors.append(f"Missing file: {screened_path}")
 
     if processed_path.exists():
         processed_df = read_csv(processed_path)
         validate_required_columns(processed_df, REQUIRED_RESPONSE_COLUMNS)
-        errors.extend(
-            f"01_processed/responses_normalized.csv: {message}"
-            for message in run_processed_validations(processed_df)
-        )
+        errors.extend(f"01_processed/responses_normalized.csv: {message}" for message in run_processed_validations(processed_df))
 
     if screened_path.exists():
         screened_df = read_csv(screened_path)
         validate_required_columns(screened_df, SCREENED_COLUMNS)
-        errors.extend(
-            f"02_screening/screened_responses.csv: {message}"
-            for message in run_screened_responses_validations(screened_df)
-        )
-
-    if duplicate_path.exists():
-        duplicate_df = read_csv(duplicate_path)
-        validate_required_columns(duplicate_df, DUPLICATE_OUTPUT_COLUMNS)
-        errors.extend(
-            f"02_screening/duplicate_responses.csv: {message}"
-            for message in run_duplicate_response_validations(duplicate_df)
-        )
+        errors.extend(f"02_screening/screened_responses.csv: {message}" for message in run_screened_responses_validations(screened_df))
 
     if mapping_path.exists():
         mapping_errors = run_raw_to_processed_mapping_validations(mapping_path.read_text(encoding="utf-8"))

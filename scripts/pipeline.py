@@ -137,13 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparser = subparsers.add_parser("screening", help="Generate 02_screening/screened_responses.csv")
     add_project_argument(subparser)
 
-    subparser = subparsers.add_parser("duplicate-check", help="Generate 02_screening/duplicate_responses.csv")
-    add_project_argument(subparser)
-
     subparser = subparsers.add_parser("validate-screening", help="Validate 02_screening")
-    add_project_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-duplicates", help="Validate 02_screening/duplicate_responses.csv")
     add_project_argument(subparser)
 
     subparser = subparsers.add_parser("embeddings", help="Generate 03_embeddings artifacts")
@@ -154,11 +148,6 @@ def build_parser() -> argparse.ArgumentParser:
     subparser.add_argument("--max-retries", type=int, default=3)
     subparser.add_argument("--retry-base-seconds", type=float, default=1.0)
     subparser.add_argument("--force", action="store_true")
-    subparser.add_argument("--prepare-only", action="store_true")
-
-    subparser = subparsers.add_parser("validate-embedding-requests", help="Validate embedding_requests.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
 
     subparser = subparsers.add_parser("validate-embedding-metadata", help="Validate embedding_metadata.json")
     add_project_argument(subparser)
@@ -186,33 +175,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_project_argument(subparser)
     add_question_argument(subparser)
 
-    subparser = subparsers.add_parser("validate-cluster-summary", help="Validate cluster_summary.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
     subparser = subparsers.add_parser("validate-clustering-metadata", help="Validate clustering_metadata.json")
     add_project_argument(subparser)
     add_question_argument(subparser)
 
-    subparser = subparsers.add_parser("scaffold-category-master", help="Scaffold category_master.csv from cluster_summary.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-    subparser.add_argument("--category-prefix", default="CAT")
-    subparser.add_argument("--include-outlier", action="store_true")
-
-    subparser = subparsers.add_parser("category-conflicts", help="Generate 05_classification/category_conflicts.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
     subparser = subparsers.add_parser("validate-category-master", help="Validate category_master.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-override-rules", help="Validate manual_override_rules.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-category-conflicts", help="Validate category_conflicts.csv")
     add_project_argument(subparser)
     add_question_argument(subparser)
 
@@ -228,70 +195,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_project_argument(subparser)
     add_question_argument(subparser)
 
-    subparser = subparsers.add_parser("review-summary", help="Generate 06_review/review_summary.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("review-priorities", help="Generate 06_review/category_review_priorities.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("review-samples", help="Generate 06_review/review_samples.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-    subparser.add_argument("--medium-per-category", type=int, default=3)
-    subparser.add_argument("--include-low", action="store_true")
-    subparser.add_argument("--priority-trigger", default=None)
-
-    subparser = subparsers.add_parser("review-corrections", help="Generate 06_review/review_corrections.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("override-candidates", help="Generate 05_classification/manual_override_candidates.csv from review_corrections.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("promote-override-candidates", help="Promote approved override candidates into manual_override_rules.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("override-rule-hits", help="Generate 05_classification/override_rule_hits.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("override-rule-summary", help="Generate 05_classification/override_rule_summary.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
     subparser = subparsers.add_parser("validate-review-log", help="Validate review_log.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-review-summary", help="Validate review_summary.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-review-priorities", help="Validate category_review_priorities.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-review-samples", help="Validate review_samples.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-review-corrections", help="Validate review_corrections.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-override-candidates", help="Validate manual_override_candidates.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-override-rule-hits", help="Validate override_rule_hits.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-override-rule-summary", help="Validate override_rule_summary.csv")
     add_project_argument(subparser)
     add_question_argument(subparser)
 
@@ -414,31 +318,6 @@ def main() -> None:
         )
         return
 
-    if args.command == "duplicate-check":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="duplicate_responses.py",
-            script_args=[
-                "--input",
-                str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
-                "--output",
-                str(project_dir(args.project_name) / "02_screening" / "duplicate_responses.csv"),
-                "--log",
-                str(project_log_path(args.project_name, "screening.log")),
-            ],
-        )
-        return
-
-    if args.command == "validate-duplicates":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_duplicate_responses.py",
-            script_args=["--input", str(project_dir(args.project_name) / "02_screening" / "duplicate_responses.csv")],
-        )
-        return
-
     if args.command == "embeddings":
         command_args = [
             "--input",
@@ -460,22 +339,11 @@ def main() -> None:
         ]
         if args.force:
             command_args.append("--force")
-        if args.prepare_only:
-            command_args.append("--prepare-only")
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
             script_name="embeddings.py",
             script_args=command_args,
-        )
-        return
-
-    if args.command == "validate-embedding-requests":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_embedding_requests.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embedding_requests.csv")],
         )
         return
 
@@ -489,8 +357,6 @@ def main() -> None:
                 str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embedding_metadata.json"),
                 "--screened",
                 str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
-                "--requests",
-                str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embedding_requests.csv"),
                 "--embeddings",
                 str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embeddings.npy"),
                 "--failures",
@@ -517,8 +383,6 @@ def main() -> None:
             script_args=[
                 "--input",
                 str(embedding_dir / "embeddings.npy"),
-                "--requests",
-                str(embedding_dir / "embedding_requests.csv"),
                 "--metadata",
                 str(embedding_dir / "embedding_metadata.json"),
             ],
@@ -533,7 +397,9 @@ def main() -> None:
             script_name="clustering.py",
             script_args=[
                 "--input",
-                str(current_question_dir / "03_embeddings" / "embedding_requests.csv"),
+                str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
+                "--question-id",
+                args.question_id,
                 "--embeddings",
                 str(current_question_dir / "03_embeddings" / "embeddings.npy"),
                 "--output-dir",
@@ -564,20 +430,6 @@ def main() -> None:
         )
         return
 
-    if args.command == "validate-cluster-summary":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_cluster_summary.py",
-            script_args=[
-                "--input",
-                str(question_dir(args.project_name, args.question_id) / "04_clustering" / "cluster_summary.csv"),
-                "--clusters",
-                str(question_dir(args.project_name, args.question_id) / "04_clustering" / "clusters.csv"),
-            ],
-        )
-        return
-
     if args.command == "validate-clustering-metadata":
         run_pipeline_command(
             project_name=args.project_name,
@@ -586,52 +438,12 @@ def main() -> None:
             script_args=[
                 "--input",
                 str(question_dir(args.project_name, args.question_id) / "04_clustering" / "clustering_metadata.json"),
-                "--requests",
-                str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embedding_requests.csv"),
+                "--screened",
+                str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
                 "--embeddings",
                 str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embeddings.npy"),
                 "--clusters",
                 str(question_dir(args.project_name, args.question_id) / "04_clustering" / "clusters.csv"),
-                "--summary",
-                str(question_dir(args.project_name, args.question_id) / "04_clustering" / "cluster_summary.csv"),
-            ],
-        )
-        return
-
-    if args.command == "scaffold-category-master":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        command_args = [
-            "--input",
-            str(current_question_dir / "04_clustering" / "cluster_summary.csv"),
-            "--output",
-            str(current_question_dir / "05_classification" / "category_master.csv"),
-            "--category-prefix",
-            args.category_prefix,
-            "--log",
-            str(question_stage_log_path(args.project_name, args.question_id, "05_classification", "classification.log")),
-        ]
-        if args.include_outlier:
-            command_args.append("--include-outlier")
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="scaffold_category_master.py",
-            script_args=command_args,
-        )
-        return
-
-    if args.command == "category-conflicts":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="category_master_conflicts.py",
-            script_args=[
-                "--input",
-                str(question_dir(args.project_name, args.question_id) / "05_classification" / "category_master.csv"),
-                "--output",
-                str(question_dir(args.project_name, args.question_id) / "05_classification" / "category_conflicts.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "05_classification", "classification.log")),
             ],
         )
         return
@@ -642,24 +454,6 @@ def main() -> None:
             command_name=args.command,
             script_name="validate_category_master.py",
             script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "category_master.csv")],
-        )
-        return
-
-    if args.command == "validate-override-rules":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_override_rules.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "manual_override_rules.csv")],
-        )
-        return
-
-    if args.command == "validate-category-conflicts":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_category_conflicts.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "category_conflicts.csv")],
         )
         return
 
@@ -702,158 +496,10 @@ def main() -> None:
                 str(question_dir(args.project_name, args.question_id) / "05_classification" / "final_labels.csv"),
                 "--output",
                 str(question_dir(args.project_name, args.question_id) / "06_review" / "review_log.csv"),
-                "--duplicates",
-                str(project_dir(args.project_name) / "02_screening" / "duplicate_responses.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "06_review", "review.log")),
-            ],
-        )
-        return
-
-    if args.command == "review-summary":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="review_summary.py",
-            script_args=[
-                "--input",
-                str(question_dir(args.project_name, args.question_id) / "06_review" / "review_log.csv"),
-                "--output",
-                str(question_dir(args.project_name, args.question_id) / "06_review" / "review_summary.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "06_review", "review.log")),
-            ],
-        )
-        return
-
-    if args.command == "review-priorities":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="category_review_priorities.py",
-            script_args=[
-                "--review-summary",
-                str(current_question_dir / "06_review" / "review_summary.csv"),
-                "--category-conflicts",
-                str(current_question_dir / "05_classification" / "category_conflicts.csv"),
-                "--output",
-                str(current_question_dir / "06_review" / "category_review_priorities.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "06_review", "review.log")),
-            ],
-        )
-        return
-
-    if args.command == "review-samples":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        command_args = [
-            "--input",
-            str(current_question_dir / "06_review" / "review_log.csv"),
-            "--output",
-            str(current_question_dir / "06_review" / "review_samples.csv"),
-            "--medium-per-category",
-            str(args.medium_per_category),
-            "--log",
-            str(question_stage_log_path(args.project_name, args.question_id, "06_review", "review.log")),
-        ]
-        if args.include_low:
-            command_args.append("--include-low")
-        if args.priority_trigger is not None:
-            command_args.extend(["--priority-trigger", args.priority_trigger])
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="review_samples.py",
-            script_args=command_args,
-        )
-        return
-
-    if args.command == "review-corrections":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="review_corrections.py",
-            script_args=[
-                "--input",
-                str(current_question_dir / "06_review" / "review_log.csv"),
-                "--output",
-                str(current_question_dir / "06_review" / "review_corrections.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "06_review", "review.log")),
-            ],
-        )
-        return
-
-    if args.command == "override-candidates":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="review_override_candidates.py",
-            script_args=[
-                "--input",
-                str(current_question_dir / "06_review" / "review_corrections.csv"),
-                "--output",
-                str(current_question_dir / "05_classification" / "manual_override_candidates.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "05_classification", "classification.log")),
-            ],
-        )
-        return
-
-    if args.command == "promote-override-candidates":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="promote_override_candidates.py",
-            script_args=[
-                "--input",
-                str(current_question_dir / "05_classification" / "manual_override_candidates.csv"),
-                "--output",
-                str(current_question_dir / "05_classification" / "manual_override_rules.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "05_classification", "classification.log")),
-            ],
-        )
-        return
-
-    if args.command == "override-rule-hits":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="override_rule_hits.py",
-            script_args=[
-                "--input",
+                "--screened",
                 str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
-                "--question-id",
-                args.question_id,
-                "--override-rules",
-                str(current_question_dir / "05_classification" / "manual_override_rules.csv"),
-                "--output",
-                str(current_question_dir / "05_classification" / "override_rule_hits.csv"),
                 "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "05_classification", "classification.log")),
-            ],
-        )
-        return
-
-    if args.command == "override-rule-summary":
-        current_question_dir = question_dir(args.project_name, args.question_id)
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="override_rule_summary.py",
-            script_args=[
-                "--input",
-                str(current_question_dir / "05_classification" / "override_rule_hits.csv"),
-                "--output",
-                str(current_question_dir / "05_classification" / "override_rule_summary.csv"),
-                "--log",
-                str(question_stage_log_path(args.project_name, args.question_id, "05_classification", "classification.log")),
+                str(question_stage_log_path(args.project_name, args.question_id, "06_review", "review.log")),
             ],
         )
         return
@@ -864,69 +510,6 @@ def main() -> None:
             command_name=args.command,
             script_name="validate_review_log.py",
             script_args=["--input", str(question_dir(args.project_name, args.question_id) / "06_review" / "review_log.csv")],
-        )
-        return
-
-    if args.command == "validate-review-summary":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_review_summary.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "06_review" / "review_summary.csv")],
-        )
-        return
-
-    if args.command == "validate-review-priorities":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_category_review_priorities.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "06_review" / "category_review_priorities.csv")],
-        )
-        return
-
-    if args.command == "validate-review-samples":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_review_samples.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "06_review" / "review_samples.csv")],
-        )
-        return
-
-    if args.command == "validate-review-corrections":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_review_corrections.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "06_review" / "review_corrections.csv")],
-        )
-        return
-
-    if args.command == "validate-override-candidates":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_override_candidates.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "manual_override_candidates.csv")],
-        )
-        return
-
-    if args.command == "validate-override-rule-hits":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_override_rule_hits.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "override_rule_hits.csv")],
-        )
-        return
-
-    if args.command == "validate-override-rule-summary":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_override_rule_summary.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "override_rule_summary.csv")],
         )
         return
 

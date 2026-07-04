@@ -1,3 +1,0 @@
-question_id,topic_id,cluster_size,representative_answers,candidate_label,candidate_definition,include_criteria,exclude_criteria,split_suggestion,confidence
-Q1,0,1,"設問ID: Q1 || 回答: 料金が安い",価格満足,,,,,0.95
-Q1,1,1,"設問ID: Q1 || 回答: 操作が簡単",使いやすさ,,,,,0.88

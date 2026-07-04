@@ -8,11 +8,11 @@ import pandas as pd
 
 from classification_common import FINAL_LABEL_COLUMNS
 from common import append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv
-from duplicate_common import DUPLICATE_OUTPUT_COLUMNS as DUPLICATE_COLUMNS
+from screening_common import SCREENED_COLUMNS
 from review_common import REVIEW_COLUMNS
-from validate_duplicate_responses import run_validations as run_duplicate_validations
 from validate_final_labels import run_validations as run_final_label_validations
 from validate_review_log import run_validations as run_review_log_validations
+from validate_screened_responses import run_validations as run_screened_validations
 
 
 FALLBACK_CATEGORY_ID = "OTHER"
@@ -40,11 +40,14 @@ def parse_confidence(value: object) -> float:
 def load_duplicate_response_ids(path: Path | None) -> set[str]:
     if path is None or not path.exists():
         return set()
-    duplicate_df = read_csv(path)
-    validate_required_columns(duplicate_df, DUPLICATE_COLUMNS)
-    duplicate_errors = run_duplicate_validations(duplicate_df)
-    if duplicate_errors:
-        raise ValueError("\n".join(duplicate_errors))
+    screened_df = read_csv(path)
+    validate_required_columns(screened_df, SCREENED_COLUMNS)
+    screened_errors = run_screened_validations(screened_df)
+    if screened_errors:
+        raise ValueError("\n".join(screened_errors))
+    duplicate_df = screened_df[screened_df["duplicate_group_id"].astype(str).str.strip() != ""].copy()
+    if len(duplicate_df) == 0:
+        return set()
     return set(duplicate_df["response_id"].astype(str).tolist())
 
 
@@ -150,7 +153,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path, help="Path to review_log.csv")
     parser.add_argument("--confidence-threshold", type=float, default=0.6)
     parser.add_argument("--reviewer", default="", help="Default reviewer name")
-    parser.add_argument("--duplicates", type=Path, default=None, help="Optional path to duplicate_responses.csv")
+    parser.add_argument("--screened", type=Path, default=None, help="Optional path to screened_responses.csv")
     parser.add_argument("--log", type=Path, default=None, help="Optional path to append execution logs as JSONL")
     parser.add_argument(
         "--stamp-created-at",
@@ -167,7 +170,7 @@ def main() -> None:
     final_label_errors = run_final_label_validations(final_labels_df)
     if final_label_errors:
         raise SystemExit("\n".join(final_label_errors))
-    duplicate_response_ids = load_duplicate_response_ids(args.duplicates)
+    duplicate_response_ids = load_duplicate_response_ids(args.screened)
     review_df = build_review_df(
         final_labels_df,
         args.confidence_threshold,

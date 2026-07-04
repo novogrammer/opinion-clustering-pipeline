@@ -68,39 +68,37 @@ projects/
 
 ## 公開I/F
 
-公開I/F は `python scripts/pipeline.py <command> ...` だけに固定する。
+公開I/F は `python scripts/<script>.py ...` に固定する。
 
-- 案件作成は `init-project`
-- 設問作成は `init-question`
-- 生CSVの標準化は `normalize --input ...`
-- 以降の工程は `screening` から `review` までを順に実行する
-- 個別スクリプト直実行と `templates/` の直接操作は公開I/Fに含めない
-- `init-project` と `init-question` は sample 成果物を複製しない
-- `init-question` 以外の project 単位コマンドは、初期化済み `projects/{project_name}/` を前提にする
-- question 単位コマンドは、初期化済み `questions/{question_id}/` を前提にする
+- 案件作成は `init_project.py`
+- 設問作成は `init_question.py`
+- 生CSVの標準化は `normalize.py --input ...`
+- 以降の工程は `screening.py` から `review.py` までを順に実行する
+- `init_project.py` と `init_question.py` は sample 成果物を複製しない
+- stage 個別 validator と横断 validator も直接実行できる正式I/Fとして扱う
 
 標準フロー:
 
 ```bash
-python scripts/pipeline.py init-project --project-name your_project_name
-python scripts/pipeline.py init-question --project-name your_project_name --question-id Q1
-python scripts/pipeline.py normalize --project-name your_project_name --input projects/your_project_name/00_raw/source.csv --response-id-col 回答ID --question-id-col 設問ID --question-text-col 質問文 --answer-text-col 自由回答
-python scripts/pipeline.py screening --project-name your_project_name
-python scripts/pipeline.py embeddings --project-name your_project_name --question-id Q1
-python scripts/pipeline.py clustering --project-name your_project_name --question-id Q1
-python scripts/pipeline.py classification --project-name your_project_name --question-id Q1
-python scripts/pipeline.py review --project-name your_project_name --question-id Q1
+python scripts/init_project.py --project-name your_project_name
+python scripts/init_question.py --project-dir projects/your_project_name --question-id Q1
+python scripts/normalize.py --input projects/your_project_name/00_raw/source.csv --output projects/your_project_name/01_processed/responses_normalized.csv --mapping-log projects/your_project_name/99_logs/raw_to_processed_mapping.md --run-log projects/your_project_name/99_logs/raw_to_processed.log --response-id-col 回答ID --question-id-col 設問ID --question-text-col 質問文 --answer-text-col 自由回答
+python scripts/screening.py --input projects/your_project_name/01_processed/responses_normalized.csv --output projects/your_project_name/02_screening/screened_responses.csv --log projects/your_project_name/99_logs/screening.log
+python scripts/embeddings.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/03_embeddings
+python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
+python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --category-master projects/your_project_name/questions/Q1/05_classification/category_master.csv --output projects/your_project_name/questions/Q1/05_classification/final_labels.csv
+python scripts/review.py --input projects/your_project_name/questions/Q1/05_classification/final_labels.csv --output projects/your_project_name/questions/Q1/06_review/review_log.csv --screened projects/your_project_name/02_screening/screened_responses.csv
 ```
 
-`00_raw -> 01_processed` が単純な列対応で済まない案件は、Codex が案件別スクリプトをその都度作る。  
-それは内部作業であり、公開I/Fには含めない。
+`normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応までとする。  
+`00_raw -> 01_processed` がそれで済まない案件は、Codex が案件別スクリプトをその都度作る。
 
 `normalize` は出力前に `responses_normalized.csv` の必須条件を自己検査し、重複 `response_id` や必須列空欄があれば失敗させる。
 `screening` も出力前に `screened_responses.csv` を自己検査し、`screening_reason` と `is_target` の不整合や重複情報の不整合を書き出さない。
 `embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`completed` / `failed` の状態に合わない成果物を書き出さない。
 `clustering` も入力 `screened_responses.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv` と `clustering_metadata.json` の不整合を書き出さない。
 `classification` も入力 `screened_responses.csv` と `category_master.csv`、生成物 `final_labels.csv` を自己検査し、不整合を書き出さない。
-標準フローの `classification` は単一ラベル分類を前提とし、override ルールは任意入力として扱う。
+標準フローの `classification.py` は単一ラベル分類を前提とし、override ルールは任意入力として扱う。
 
 補助成果物:
 
@@ -112,16 +110,17 @@ python scripts/pipeline.py review --project-name your_project_name --question-id
 検査例:
 
 ```bash
-python scripts/pipeline.py validate-processed --project-name your_project_name
-python scripts/pipeline.py validate-screening --project-name your_project_name
-python scripts/pipeline.py validate-question --project-name your_project_name --question-id Q1
-python scripts/pipeline.py validate-project --project-name your_project_name
+python scripts/validate_processed.py --input projects/your_project_name/01_processed/responses_normalized.csv
+python scripts/validate_screening.py --input projects/your_project_name/02_screening/screened_responses.csv
+python scripts/validate_question.py --question-dir projects/your_project_name/questions/Q1
+python scripts/validate_project.py --project-dir projects/your_project_name
+python scripts/validate_log.py --input projects/your_project_name/99_logs/pipeline.log
 ```
 
-`validate-question` は進んでいる段階までを前提に検査する。  
+`validate_question.py` は進んでいる段階までを前提に検査する。  
 たとえば `category_master.csv` だけを作った段階では、まだ `final_labels.csv` や `review_log.csv` を必須にしない。
 
-`validate-project` も同様に stage-aware で、`init-project` 直後の未着手状態では後段成果物を要求しない。
+`validate_project.py` も同様に stage-aware で、`init_project.py` 実行直後の未着手状態では後段成果物を要求しない。
 
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。

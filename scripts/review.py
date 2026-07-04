@@ -318,7 +318,7 @@ def main() -> None:
     if args.log is not None:
         append_jsonl(
             {
-                "event": "review_prep",
+                "event": "review",
                 "input": str(args.input),
                 "output": str(args.output),
                 "row_count": int(len(review_df)),

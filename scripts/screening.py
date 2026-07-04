@@ -16,7 +16,7 @@ from common import (
     validate_required_columns,
     write_csv,
 )
-from normalize_processed import run_validations as run_processed_validations
+from normalize import run_validations as run_processed_validations
 
 
 NON_RESPONSE_VALUES = {

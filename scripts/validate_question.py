@@ -24,8 +24,8 @@ from embeddings import (
     run_embeddings_array_validations,
     run_failure_validations,
 )
-from review_prep import REVIEW_COLUMNS, run_review_log_validations
-from validate_jsonl_log import run_validations as run_jsonl_log_validations
+from review import REVIEW_COLUMNS, run_review_log_validations
+from validate_log import run_validations as run_jsonl_log_validations
 
 
 def validate_question_id_column(df, expected_question_id: str, label: str) -> list[str]:
@@ -174,7 +174,7 @@ def main() -> None:
     errors = collect_question_errors(question_dir)
 
     log_payload = {
-        "event": "validate_question_artifacts",
+        "event": "validate_question",
         "question_dir": str(question_dir),
         "success": len(errors) == 0,
         "errors": errors,

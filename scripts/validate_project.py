@@ -4,10 +4,10 @@ import argparse
 from pathlib import Path
 
 from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns
-from normalize_processed import run_validations as run_processed_validations
+from normalize import run_validations as run_processed_validations
 from screening import SCREENED_COLUMNS, run_validations as run_screened_validations
-from validate_jsonl_log import run_validations as run_jsonl_log_validations
-from validate_question_artifacts import collect_question_errors
+from validate_log import run_validations as run_jsonl_log_validations
+from validate_question import collect_question_errors
 from validate_raw_to_processed_mapping import run_validations as run_raw_to_processed_mapping_validations
 
 
@@ -81,7 +81,7 @@ def main() -> None:
         errors.extend(validate_question_dir(question_dir))
 
     log_payload = {
-        "event": "validate_project_artifacts",
+        "event": "validate_project",
         "project_dir": str(project_dir),
         "success": len(errors) == 0,
         "errors": errors,

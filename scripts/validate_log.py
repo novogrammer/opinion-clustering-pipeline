@@ -43,7 +43,7 @@ def main() -> None:
     lines = args.input.read_text(encoding="utf-8").splitlines()
     errors = run_validations(lines)
     log_payload = {
-        "event": "validate_jsonl_log",
+        "event": "validate_log",
         "input": str(args.input),
         "line_count": len(lines),
         "success": len(errors) == 0,

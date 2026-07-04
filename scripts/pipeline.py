@@ -220,7 +220,7 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="normalize_processed.py",
+            script_name="normalize.py",
             script_args=command_args,
         )
         return
@@ -229,11 +229,10 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="normalize_processed.py",
+            script_name="validate_processed.py",
             script_args=[
                 "--input",
                 str(project_dir(args.project_name) / "01_processed" / "responses_normalized.csv"),
-                "--validate",
             ],
         )
         return
@@ -258,11 +257,10 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="screening.py",
+            script_name="validate_screening.py",
             script_args=[
                 "--input",
                 str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
-                "--validate",
             ],
         )
         return
@@ -352,7 +350,7 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="review_prep.py",
+            script_name="review.py",
             script_args=[
                 "--input",
                 str(question_dir(args.project_name, args.question_id) / "05_classification" / "final_labels.csv"),
@@ -370,7 +368,7 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="validate_question_artifacts.py",
+            script_name="validate_question.py",
             script_args=[
                 "--question-dir",
                 str(question_dir(args.project_name, args.question_id)),
@@ -382,7 +380,7 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="validate_project_artifacts.py",
+            script_name="validate_project.py",
             script_args=[
                 "--project-dir",
                 str(project_dir(args.project_name)),
@@ -394,7 +392,7 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="validate_jsonl_log.py",
+            script_name="validate_log.py",
             script_args=[
                 "--input",
                 str(project_log_path(args.project_name, args.log_name)),

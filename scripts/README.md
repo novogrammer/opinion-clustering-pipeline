@@ -29,7 +29,7 @@ python scripts/screening.py --input projects/your_project_name/01_processed/resp
 python scripts/embeddings.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/03_embeddings
 python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
 python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --category-master projects/your_project_name/questions/Q1/05_classification/category_master.csv --output projects/your_project_name/questions/Q1/05_classification/final_labels.csv
-python scripts/review.py --input projects/your_project_name/questions/Q1/05_classification/final_labels.csv --output projects/your_project_name/questions/Q1/06_review/review_log.csv --screened projects/your_project_name/02_screening/screened_responses.csv
+python scripts/review.py --input projects/your_project_name/questions/Q1/05_classification/final_labels.csv --output projects/your_project_name/questions/Q1/06_review/review_log.csv
 ```
 
 各ステージは主成果物を書き出す前に自己検査し、不整合な成果物を残さない。

@@ -8,7 +8,6 @@ import pandas as pd
 
 from classification import FALLBACK_CATEGORY_ID, FALLBACK_CATEGORY_NAME, FINAL_LABEL_COLUMNS, run_final_label_validations
 from common import append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv
-from screening import SCREENED_COLUMNS, run_validations as run_screened_validations
 
 
 REVIEW_COLUMNS = [
@@ -40,7 +39,6 @@ ALLOWED_REVIEW_TRIGGER_TOKENS = {
     "multi_topic",
     "pii_detected",
     "aggressive_expression",
-    "duplicate_response",
     "typical_match",
 }
 NEGATION_TERMS = ["ない", "ぬ", "ません", "ではない", "じゃない", "なく", "ず", "微妙", "不満", "困る"]
@@ -183,23 +181,8 @@ def parse_confidence(value: object) -> float:
         return 0.0
 
 
-def load_duplicate_response_ids(path: Path | None) -> set[str]:
-    if path is None or not path.exists():
-        return set()
-    screened_df = read_csv(path)
-    validate_required_columns(screened_df, SCREENED_COLUMNS)
-    screened_errors = run_screened_validations(screened_df)
-    if screened_errors:
-        raise ValueError("\n".join(screened_errors))
-    duplicate_df = screened_df[screened_df["duplicate_group_id"].astype(str).str.strip() != ""].copy()
-    if len(duplicate_df) == 0:
-        return set()
-    return set(duplicate_df["response_id"].astype(str).tolist())
-
-
-def collect_review_triggers(row: pd.Series, confidence_threshold: float, duplicate_response_ids: set[str]) -> list[str]:
+def collect_review_triggers(row: pd.Series, confidence_threshold: float) -> list[str]:
     triggers: list[str] = []
-    response_id = str(row["response_id"]).strip()
     answer_text = str(row["answer_text"]).strip()
     reason = str(row["reason"]).strip()
     confidence_value = parse_confidence(row["confidence"])
@@ -224,8 +207,6 @@ def collect_review_triggers(row: pd.Series, confidence_threshold: float, duplica
         triggers.append("pii_detected")
     if any(term in answer_text for term in AGGRESSIVE_TERMS):
         triggers.append("aggressive_expression")
-    if response_id in duplicate_response_ids:
-        triggers.append("duplicate_response")
     return triggers
 
 
@@ -240,7 +221,6 @@ def choose_priority(triggers: list[str]) -> str:
         "ambiguous_match",
         "pii_detected",
         "aggressive_expression",
-        "duplicate_response",
     }
     if any(trigger in high_priority_triggers for trigger in triggers):
         return "high"
@@ -260,9 +240,8 @@ def choose_status(triggers: list[str]) -> str:
 def choose_priority_and_trigger(
     row: pd.Series,
     confidence_threshold: float,
-    duplicate_response_ids: set[str],
 ) -> tuple[str, str, str]:
-    triggers = collect_review_triggers(row, confidence_threshold, duplicate_response_ids)
+    triggers = collect_review_triggers(row, confidence_threshold)
     return choose_priority(triggers), build_review_trigger(triggers), choose_status(triggers)
 
 
@@ -270,11 +249,10 @@ def build_review_df(
     final_labels_df: pd.DataFrame,
     confidence_threshold: float,
     reviewer: str,
-    duplicate_response_ids: set[str],
 ) -> pd.DataFrame:
     review_df = final_labels_df.copy()
     decisions = review_df.apply(
-        lambda row: choose_priority_and_trigger(row, confidence_threshold, duplicate_response_ids),
+        lambda row: choose_priority_and_trigger(row, confidence_threshold),
         axis=1,
         result_type="expand",
     )
@@ -294,7 +272,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path, help="Path to review_log.csv")
     parser.add_argument("--confidence-threshold", type=float, default=0.6)
     parser.add_argument("--reviewer", default="", help="Default reviewer name")
-    parser.add_argument("--screened", type=Path, default=None, help="Optional path to screened_responses.csv")
     parser.add_argument("--log", type=Path, default=None, help="Optional path to append execution logs as JSONL")
     parser.add_argument("--stamp-created-at", action="store_true", help="Fill reviewed_at with the current timestamp for exported rows")
     return parser.parse_args()
@@ -307,8 +284,7 @@ def main() -> None:
     final_label_errors = run_final_label_validations(final_labels_df)
     if final_label_errors:
         raise SystemExit("\n".join(final_label_errors))
-    duplicate_response_ids = load_duplicate_response_ids(args.screened)
-    review_df = build_review_df(final_labels_df, args.confidence_threshold, args.reviewer, duplicate_response_ids)
+    review_df = build_review_df(final_labels_df, args.confidence_threshold, args.reviewer)
     if args.stamp_created_at:
         review_df["reviewed_at"] = utc_now_iso()
     review_errors = run_review_log_validations(review_df)
@@ -322,7 +298,6 @@ def main() -> None:
                 "input": str(args.input),
                 "output": str(args.output),
                 "row_count": int(len(review_df)),
-                "duplicate_response_count": int(len(duplicate_response_ids)),
                 "created_at": utc_now_iso(),
             },
             args.log,

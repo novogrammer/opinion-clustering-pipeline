@@ -343,13 +343,6 @@ target
 
 共通 `screening` CLI を使う場合は、この判定語彙と `is_target` の整合を出力前に自己検査し、不整合な `screened_responses.csv` を書き出さない。
 
-重複回答の扱い:
-
-- `duplicate-check` のような別ステージは置かず、必要なら `screened_responses.csv` に重複情報を統合する
-- 初期実装では `question_id` + 正規化後 `answer_text` の完全一致だけを重複候補とする
-- 重複候補は分類から除外せず、監査用に記録する
-- 追加する場合の想定列は `duplicate_group_id`, `canonical_response_id`, `duplicate_count`, `is_canonical`
-
 ---
 
 ## Embedding生成仕様

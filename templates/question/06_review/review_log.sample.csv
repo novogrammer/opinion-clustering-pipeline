@@ -1,3 +1,3 @@
 response_id,question_id,answer_text,predicted_category_id,predicted_category_name,confidence,reason,needs_human_review,review_priority,review_trigger,review_status,reviewed_category_id,reviewed_category_name,review_comment,reviewer,reviewed_at
 1,Q1,料金が安い,CAT001,価格満足,1.0,top=CAT001:価格満足(score=1;matched=安い;excluded=none) second=CAT002:使いやすさ(score=0;matched=none;excluded=none) gap=1 flags=none,false,low,typical_match,skipped,,,,,
-2,Q1,操作が簡単,CAT002,使いやすさ,1.0,top=CAT002:使いやすさ(score=1;matched=簡単;excluded=none) second=CAT001:価格満足(score=0;matched=none;excluded=none) gap=1 flags=none,false,high,duplicate_response,pending,,,,,
+2,Q1,操作が簡単,CAT002,使いやすさ,0.4,top=CAT002:使いやすさ(score=1;matched=簡単;excluded=none) second=CAT001:価格満足(score=1;matched=操作;excluded=none) gap=0 flags=ambiguous_top_score|low_confidence,true,high,needs_human_review|low_confidence|ambiguous_match,pending,,,,,

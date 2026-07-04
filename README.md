@@ -58,7 +58,6 @@ projects/
 - `01_processed` は判断なしの整形結果
 - `02_screening` で無回答や分類対象外を文字列ルールで自動判定する
 - `02_screening` では文脈解釈をせず、空欄、定型無回答、記号のみを機械的に切り分ける
-- `02_screening` では重複情報も `screened_responses.csv` に統合する
 - `05_classification` はカテゴリマスタを使ったルールベース分類の土台まで実装済み
 - `03_embeddings` 以降は `questions/{question_id}/` 配下で設問ごとに進める
 
@@ -86,14 +85,14 @@ python scripts/screening.py --input projects/your_project_name/01_processed/resp
 python scripts/embeddings.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/03_embeddings
 python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
 python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --category-master projects/your_project_name/questions/Q1/05_classification/category_master.csv --output projects/your_project_name/questions/Q1/05_classification/final_labels.csv
-python scripts/review.py --input projects/your_project_name/questions/Q1/05_classification/final_labels.csv --output projects/your_project_name/questions/Q1/06_review/review_log.csv --screened projects/your_project_name/02_screening/screened_responses.csv
+python scripts/review.py --input projects/your_project_name/questions/Q1/05_classification/final_labels.csv --output projects/your_project_name/questions/Q1/06_review/review_log.csv
 ```
 
 `normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応までとする。  
 `00_raw -> 01_processed` がそれで済まない案件は、Codex が案件別スクリプトをその都度作る。
 
 `normalize` は出力前に `responses_normalized.csv` の必須条件を自己検査し、重複 `response_id` や必須列空欄があれば失敗させる。
-`screening` も出力前に `screened_responses.csv` を自己検査し、`screening_reason` と `is_target` の不整合や重複情報の不整合を書き出さない。
+`screening` も出力前に `screened_responses.csv` を自己検査し、`screening_reason` と `is_target` の不整合を書き出さない。
 `embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`completed` / `failed` の状態に合わない成果物を書き出さない。
 `clustering` も入力 `screened_responses.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv` と `clustering_metadata.json` の不整合を書き出さない。
 `classification` も入力 `screened_responses.csv` と `category_master.csv`、生成物 `final_labels.csv` を自己検査し、不整合を書き出さない。

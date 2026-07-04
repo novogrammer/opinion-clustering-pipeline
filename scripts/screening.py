@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import re
 import unicodedata
 from pathlib import Path
@@ -35,10 +34,6 @@ SYMBOL_ONLY_PATTERN = re.compile(r"^[\W_]+$", re.UNICODE)
 SCREENED_COLUMNS = REQUIRED_RESPONSE_COLUMNS + [
     "is_target",
     "screening_reason",
-    "duplicate_group_id",
-    "canonical_response_id",
-    "duplicate_count",
-    "is_canonical",
 ]
 ALLOWED_REASONS = {"blank", "non_response", "symbol_only", "target"}
 
@@ -57,17 +52,6 @@ def classify_answer(answer_text: str) -> tuple[bool, str]:
     if SYMBOL_ONLY_PATTERN.fullmatch(normalized):
         return False, "symbol_only"
     return True, "target"
-
-
-def normalize_duplicate_answer(answer_text: str) -> str:
-    normalized = unicodedata.normalize("NFKC", answer_text)
-    normalized = normalized.replace("\r\n", "\n").replace("\r", "\n").replace("\t", " ")
-    normalized = re.sub(r"\s+", " ", normalized)
-    return normalized.strip()
-
-
-def build_duplicate_group_id(question_id: str, normalized_answer_text: str) -> str:
-    return hashlib.sha1(f"{question_id}\n{normalized_answer_text}".encode("utf-8")).hexdigest()[:12]
 
 
 def validate_no_duplicate_response_ids(df: pd.DataFrame) -> list[str]:
@@ -147,59 +131,6 @@ def validate_reason_content_consistency(df: pd.DataFrame) -> list[str]:
     return errors
 
 
-def validate_duplicate_columns(df: pd.DataFrame) -> list[str]:
-    errors: list[str] = []
-    duplicate_columns = ["duplicate_group_id", "canonical_response_id", "duplicate_count", "is_canonical"]
-    for idx, row in df.iterrows():
-        values = {column: str(row[column]).strip() for column in duplicate_columns}
-        has_any = any(value != "" for value in values.values())
-        if not has_any:
-            continue
-        if values["duplicate_group_id"] == "":
-            errors.append(f"Row {idx + 1}: duplicate_group_id is required when duplicate metadata is present")
-        if values["canonical_response_id"] == "":
-            errors.append(f"Row {idx + 1}: canonical_response_id is required when duplicate metadata is present")
-        if values["duplicate_count"] == "":
-            errors.append(f"Row {idx + 1}: duplicate_count is required when duplicate metadata is present")
-        if values["is_canonical"] not in {"true", "false"}:
-            errors.append(f"Row {idx + 1}: is_canonical must be true or false when duplicate metadata is present")
-        try:
-            duplicate_count = int(values["duplicate_count"])
-        except ValueError:
-            errors.append(f"Row {idx + 1}: duplicate_count must be an integer when duplicate metadata is present")
-            continue
-        if duplicate_count <= 1:
-            errors.append(f"Row {idx + 1}: duplicate_count must be greater than 1 when duplicate metadata is present")
-
-    for group_id, group in df[df["duplicate_group_id"].astype(str).str.strip() != ""].groupby("duplicate_group_id", sort=False):
-        canonical_rows = group[group["is_canonical"].astype(str).str.lower() == "true"]
-        if len(canonical_rows) != 1:
-            errors.append(f"{group_id}: expected exactly one canonical row")
-        canonical_ids = set(group["canonical_response_id"].astype(str).tolist())
-        if len(canonical_ids) != 1:
-            errors.append(f"{group_id}: canonical_response_id values differ inside group")
-        duplicate_counts = set(group["duplicate_count"].astype(str).tolist())
-        if len(duplicate_counts) != 1:
-            errors.append(f"{group_id}: duplicate_count values differ inside group")
-        else:
-            stated_count = next(iter(duplicate_counts))
-            try:
-                if int(stated_count) != len(group):
-                    errors.append(f"{group_id}: duplicate_count does not match actual group size")
-            except ValueError:
-                pass
-        normalized_answers = {normalize_duplicate_answer(value) for value in group["answer_text"].astype(str).tolist()}
-        if len(normalized_answers) != 1:
-            errors.append(f"{group_id}: answer_text values do not normalize to one value")
-        expected_group_id = build_duplicate_group_id(
-            str(group["question_id"].iloc[0]),
-            next(iter(normalized_answers)),
-        )
-        if str(group_id) != expected_group_id:
-            errors.append(f"{group_id}: duplicate_group_id does not match question_id and normalized answer_text")
-    return errors
-
-
 def run_validations(df: pd.DataFrame) -> list[str]:
     errors: list[str] = []
     errors.extend(validate_no_duplicate_response_ids(df))
@@ -208,7 +139,6 @@ def run_validations(df: pd.DataFrame) -> list[str]:
     errors.extend(validate_reason_values(df))
     errors.extend(validate_reason_boolean_consistency(df))
     errors.extend(validate_reason_content_consistency(df))
-    errors.extend(validate_duplicate_columns(df))
     return errors
 
 
@@ -217,31 +147,6 @@ def build_screened_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     results = working["answer_text"].map(classify_answer)
     working["is_target"] = results.map(lambda item: item[0])
     working["screening_reason"] = results.map(lambda item: item[1])
-    working["duplicate_group_id"] = ""
-    working["canonical_response_id"] = ""
-    working["duplicate_count"] = ""
-    working["is_canonical"] = ""
-
-    target_rows = working[working["is_target"] == True].copy()
-    target_rows["normalized_duplicate_answer"] = target_rows["answer_text"].map(normalize_duplicate_answer)
-    target_rows = target_rows[target_rows["normalized_duplicate_answer"] != ""].copy()
-
-    grouped = target_rows.groupby(["question_id", "normalized_duplicate_answer"], sort=True, dropna=False)
-    for (question_id, normalized_duplicate_answer), group in grouped:
-        if len(group) <= 1:
-            continue
-        sorted_group = group.sort_values(by=["response_id"], kind="stable").copy()
-        canonical_response_id = str(sorted_group["response_id"].iloc[0])
-        duplicate_group_id = build_duplicate_group_id(str(question_id), str(normalized_duplicate_answer))
-        duplicate_count = str(int(len(sorted_group)))
-        for _, row in sorted_group.iterrows():
-            response_id = str(row["response_id"])
-            row_mask = working["response_id"].astype(str) == response_id
-            working.loc[row_mask, "duplicate_group_id"] = duplicate_group_id
-            working.loc[row_mask, "canonical_response_id"] = canonical_response_id
-            working.loc[row_mask, "duplicate_count"] = duplicate_count
-            working.loc[row_mask, "is_canonical"] = str(response_id == canonical_response_id).lower()
-
     return working[SCREENED_COLUMNS]
 
 

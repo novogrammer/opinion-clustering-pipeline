@@ -8,20 +8,126 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from clustering_common import CLUSTER_COLUMNS
-from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv, write_json
-from validate_clustering_metadata import run_validations as run_clustering_metadata_validations
-from validate_clusters import run_validations as run_clusters_validations
-from validate_embeddings_array import run_validations as run_embeddings_array_validations
-from validate_screened_responses import run_validations as run_screened_validations
+from common import append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv, write_json
+from embeddings import file_sha1, run_embeddings_array_validations
+from screening import SCREENED_COLUMNS, run_validations as run_screened_validations
 
 
-def file_sha1(path: Path) -> str:
-    digest = hashlib.sha1()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+CLUSTER_COLUMNS = ["response_id", "question_id", "topic_id", "topic_probability", "is_outlier"]
+CLUSTERING_METADATA_KEYS = [
+    "created_at",
+    "row_count",
+    "input_screened_path",
+    "input_screened_sha1",
+    "input_embeddings_path",
+    "input_embeddings_sha1",
+    "parameters",
+]
+
+
+def is_sha1_text(value: object) -> bool:
+    text = str(value)
+    return len(text) == 40 and all(char in "0123456789abcdef" for char in text.lower())
+
+
+def validate_no_duplicate_response_ids(df: pd.DataFrame) -> list[str]:
+    duplicate_mask = df["response_id"].duplicated(keep=False)
+    duplicates = df.loc[duplicate_mask, "response_id"].tolist()
+    if not duplicates:
+        return []
+    joined = ", ".join(dict.fromkeys(duplicates))
+    return [f"Duplicate response_id values found: {joined}"]
+
+
+def validate_probability_values(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    for idx, value in enumerate(df["topic_probability"], start=1):
+        if str(value).strip() == "":
+            continue
+        try:
+            probability = float(value)
+        except (TypeError, ValueError):
+            errors.append(f"Invalid topic_probability at row {idx}: {value}")
+            continue
+        if probability < 0 or probability > 1:
+            errors.append(f"Out-of-range topic_probability at row {idx}: {value}")
+    return errors
+
+
+def validate_boolean_column(df: pd.DataFrame, column: str) -> list[str]:
+    allowed = {"true", "false"}
+    invalid_rows = [
+        str(index + 1)
+        for index, value in enumerate(df[column].astype(str).str.lower())
+        if value not in allowed
+    ]
+    if not invalid_rows:
+        return []
+    return [f"Invalid boolean values in {column} at rows: {', '.join(invalid_rows)}"]
+
+
+def validate_topic_outlier_consistency(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    for idx, row in df.iterrows():
+        topic_id = str(row["topic_id"])
+        is_outlier = str(row["is_outlier"]).lower() == "true"
+        if is_outlier and topic_id != "-1":
+            errors.append(f"Row {idx + 1}: is_outlier=true requires topic_id=-1")
+        if not is_outlier and topic_id == "-1":
+            errors.append(f"Row {idx + 1}: topic_id=-1 requires is_outlier=true")
+    return errors
+
+
+def run_cluster_validations(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    errors.extend(validate_no_duplicate_response_ids(df))
+    errors.extend(validate_probability_values(df))
+    errors.extend(validate_boolean_column(df, "is_outlier"))
+    errors.extend(validate_topic_outlier_consistency(df))
+    return errors
+
+
+def run_clustering_metadata_validations(
+    payload: dict[str, object],
+    *,
+    screened_path: Path | None = None,
+    embeddings_path: Path | None = None,
+    clusters_path: Path | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    for key in CLUSTERING_METADATA_KEYS:
+        if key not in payload:
+            errors.append(f"Missing key: {key}")
+    if "row_count" in payload and not isinstance(payload["row_count"], int):
+        errors.append("row_count must be an integer")
+    elif "row_count" in payload and payload["row_count"] < 0:
+        errors.append("row_count must be greater than or equal to 0")
+    if "parameters" in payload and not isinstance(payload["parameters"], dict):
+        errors.append("parameters must be an object")
+    if "input_screened_path" in payload and str(payload["input_screened_path"]).strip() == "":
+        errors.append("input_screened_path must not be blank")
+    if "input_embeddings_path" in payload and str(payload["input_embeddings_path"]).strip() == "":
+        errors.append("input_embeddings_path must not be blank")
+    if "input_screened_sha1" in payload and not is_sha1_text(payload["input_screened_sha1"]):
+        errors.append("input_screened_sha1 must be a 40-character SHA-1 hex string")
+    if "input_embeddings_sha1" in payload and not is_sha1_text(payload["input_embeddings_sha1"]):
+        errors.append("input_embeddings_sha1 must be a 40-character SHA-1 hex string")
+    if screened_path is not None:
+        if payload.get("input_screened_path") != str(screened_path):
+            errors.append("input_screened_path does not match the provided screened path")
+        elif payload.get("input_screened_sha1") != file_sha1(screened_path):
+            errors.append("input_screened_sha1 does not match the provided screened file")
+    if embeddings_path is not None:
+        if payload.get("input_embeddings_path") != str(embeddings_path):
+            errors.append("input_embeddings_path does not match the provided embeddings path")
+        elif payload.get("input_embeddings_sha1") != file_sha1(embeddings_path):
+            errors.append("input_embeddings_sha1 does not match the provided embeddings file")
+    if clusters_path is not None:
+        if not clusters_path.exists():
+            errors.append("clusters.csv must exist when validating clustering metadata")
+        elif payload.get("row_count") != int(len(read_csv(clusters_path))):
+            errors.append("row_count does not match clusters.csv row count")
+    return errors
 
 
 def build_metadata_payload(
@@ -84,7 +190,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_topic_model(args: argparse.Namespace) -> BERTopic:
+def build_topic_model(args: argparse.Namespace):
     from bertopic import BERTopic
     from hdbscan import HDBSCAN
     from umap import UMAP
@@ -123,9 +229,9 @@ def build_clusters_df(target_rows: pd.DataFrame, topics: list[int], probabilitie
             "question_id": target_rows["question_id"].astype(str).tolist(),
             "topic_id": topics,
             "topic_probability": probability_values,
+            "is_outlier": [topic_id == -1 for topic_id in topics],
         }
     )
-    clusters_df["is_outlier"] = clusters_df["topic_id"] == -1
     return clusters_df[CLUSTER_COLUMNS]
 
 
@@ -146,7 +252,7 @@ def main() -> None:
     args = parse_args()
 
     screened_df = read_csv(args.input)
-    validate_required_columns(screened_df, REQUIRED_RESPONSE_COLUMNS + ["is_target", "screening_reason"])
+    validate_required_columns(screened_df, SCREENED_COLUMNS)
     screened_errors = run_screened_validations(screened_df)
     if screened_errors:
         raise SystemExit("\n".join(screened_errors))
@@ -201,10 +307,7 @@ def main() -> None:
         model_params = requested_parameters
     elif len(target_rows) == 1:
         clusters_df = build_single_topic_df(target_rows)
-        model_params = {
-            "mode": "single_document_fallback",
-            "random_state": args.random_state,
-        }
+        model_params = {"mode": "single_document_fallback", "random_state": args.random_state}
     else:
         args.umap_n_neighbors = min(args.umap_n_neighbors, max(2, len(target_rows) - 1))
         args.umap_n_components = min(args.umap_n_components, embeddings.shape[1], len(target_rows) - 1)
@@ -222,7 +325,7 @@ def main() -> None:
             "random_state": args.random_state,
         }
 
-    cluster_errors = run_clusters_validations(clusters_df)
+    cluster_errors = run_cluster_validations(clusters_df)
     if cluster_errors:
         raise SystemExit("\n".join(cluster_errors))
     write_csv(clusters_df, clusters_path)

@@ -11,16 +11,27 @@ import pandas as pd
 from openai import OpenAI
 
 from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv, write_json
-from validate_embedding_failures import run_validations as run_embedding_failure_validations
-from validate_embedding_metadata import run_validations as run_embedding_metadata_validations
-from validate_embeddings_array import run_validations as run_embeddings_array_validations
-from validate_screened_responses import run_validations as run_screened_validations
+from screening import SCREENED_COLUMNS, run_validations as run_screened_validations
 
 
 INPUT_TEMPLATE_VERSION = "v1"
 PREPROCESSING_VERSION = "screened_responses_v1"
 FAILURE_COLUMNS = ["response_id", "question_id", "embedding_input_text", "error_type", "error_message"]
 EMBEDDING_INPUT_TEMPLATE = "設問ID: {question_id}\n質問: {question_text}\n回答: {answer_text}"
+EMBEDDING_METADATA_KEYS = [
+    "model",
+    "question_id",
+    "row_count",
+    "input_screened_path",
+    "input_screened_sha1",
+    "input_template_version",
+    "input_template",
+    "preprocessing_version",
+    "batch_size",
+    "failed_count",
+    "status",
+    "created_at",
+]
 
 
 def file_sha1(path: Path) -> str:
@@ -29,6 +40,127 @@ def file_sha1(path: Path) -> str:
         for chunk in iter(lambda: fh.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def is_sha1_text(value: object) -> bool:
+    text = str(value)
+    return len(text) == 40 and all(char in "0123456789abcdef" for char in text.lower())
+
+
+def validate_failure_required_text(df: pd.DataFrame, columns: list[str]) -> list[str]:
+    errors: list[str] = []
+    for column in columns:
+        blank_mask = df[column].map(lambda value: str(value).strip() == "")
+        count = int(blank_mask.sum())
+        if count > 0:
+            errors.append(f"Blank values found in {column}: {count}")
+    return errors
+
+
+def validate_failure_no_duplicate_response_ids(df: pd.DataFrame) -> list[str]:
+    duplicate_mask = df["response_id"].duplicated(keep=False)
+    duplicates = df.loc[duplicate_mask, "response_id"].tolist()
+    if not duplicates:
+        return []
+    joined = ", ".join(dict.fromkeys(duplicates))
+    return [f"Duplicate response_id values found: {joined}"]
+
+
+def run_failure_validations(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    if len(df) == 0:
+        return ["embedding_failures.csv must not be empty when present"]
+    errors.extend(validate_failure_required_text(df, FAILURE_COLUMNS))
+    errors.extend(validate_failure_no_duplicate_response_ids(df))
+    return errors
+
+
+def run_embedding_metadata_validations(
+    payload: dict[str, object],
+    *,
+    screened_path: Path | None = None,
+    embeddings_path: Path | None = None,
+    failures_path: Path | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    for key in EMBEDDING_METADATA_KEYS:
+        if key not in payload:
+            errors.append(f"Missing key: {key}")
+    if "row_count" in payload and not isinstance(payload["row_count"], int):
+        errors.append("row_count must be an integer")
+    elif "row_count" in payload and payload["row_count"] < 0:
+        errors.append("row_count must be greater than or equal to 0")
+    if "batch_size" in payload and not isinstance(payload["batch_size"], int):
+        errors.append("batch_size must be an integer")
+    elif "batch_size" in payload and payload["batch_size"] <= 0:
+        errors.append("batch_size must be greater than 0")
+    if "failed_count" in payload and not isinstance(payload["failed_count"], int):
+        errors.append("failed_count must be an integer")
+    elif "failed_count" in payload and payload["failed_count"] < 0:
+        errors.append("failed_count must be greater than or equal to 0")
+    if "status" in payload and payload["status"] not in {"prepared", "completed", "failed"}:
+        errors.append("status must be one of: prepared, completed, failed")
+    if "input_screened_path" in payload and str(payload["input_screened_path"]).strip() == "":
+        errors.append("input_screened_path must not be blank")
+    if "input_screened_sha1" in payload and not is_sha1_text(payload["input_screened_sha1"]):
+        errors.append("input_screened_sha1 must be a 40-character SHA-1 hex string")
+    if screened_path is not None:
+        if payload.get("input_screened_path") != str(screened_path):
+            errors.append("input_screened_path does not match the provided screened path")
+        elif payload.get("input_screened_sha1") != file_sha1(screened_path):
+            errors.append("input_screened_sha1 does not match the provided screened file")
+
+    status = payload.get("status")
+    failed_count = payload.get("failed_count")
+
+    if status in {"prepared", "completed"} and failed_count not in {0, None}:
+        errors.append("failed_count must be 0 when status is prepared or completed")
+    if status == "failed" and failed_count == 0:
+        errors.append("failed_count must be greater than 0 when status is failed")
+
+    if embeddings_path is not None:
+        embeddings_exists = embeddings_path.exists()
+        if status == "prepared" and embeddings_exists:
+            errors.append("embeddings.npy must not exist when status is prepared")
+        if status == "failed" and embeddings_exists:
+            errors.append("embeddings.npy must not exist when status is failed")
+        if status == "completed" and not embeddings_exists:
+            errors.append("embeddings.npy must exist when status is completed")
+
+    if failures_path is not None:
+        failures_exists = failures_path.exists()
+        if status in {"prepared", "completed"} and failures_exists:
+            errors.append("embedding_failures.csv must not exist when status is prepared or completed")
+        if status == "failed":
+            if not failures_exists:
+                errors.append("embedding_failures.csv must exist when status is failed")
+            else:
+                failure_count = int(len(read_csv(failures_path)))
+                if failed_count != failure_count:
+                    errors.append("failed_count does not match embedding_failures.csv row count")
+    return errors
+
+
+def run_embeddings_array_validations(
+    embeddings: np.ndarray,
+    *,
+    metadata_row_count: int | None = None,
+    metadata_status: str | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    if embeddings.ndim not in (1, 2):
+        errors.append(f"embeddings.npy must be 1D or 2D, got ndim={embeddings.ndim}")
+
+    row_count = int(len(embeddings))
+    if metadata_row_count is not None and row_count != metadata_row_count:
+        errors.append(
+            f"embeddings.npy row count does not match embedding_metadata.json row_count: {row_count} != {metadata_row_count}"
+        )
+    if metadata_status is not None and metadata_status != "completed":
+        errors.append(f"embeddings.npy requires embedding_metadata.json status=completed, got {metadata_status}")
+    if embeddings.ndim == 2 and row_count > 0 and embeddings.shape[1] <= 0:
+        errors.append("embeddings.npy has zero embedding dimensions")
+    return errors
 
 
 def build_embedding_input(question_id: str, question_text: str, answer_text: str) -> str:
@@ -166,7 +298,7 @@ def main() -> None:
     args = parse_args()
 
     df = read_csv(args.input)
-    validate_required_columns(df, REQUIRED_RESPONSE_COLUMNS + ["is_target", "screening_reason"])
+    validate_required_columns(df, SCREENED_COLUMNS)
     screened_errors = run_screened_validations(df)
     if screened_errors:
         raise SystemExit("\n".join(screened_errors))
@@ -231,7 +363,7 @@ def main() -> None:
         )
 
     if len(failures_df) > 0:
-        failure_errors = run_embedding_failure_validations(failures_df)
+        failure_errors = run_failure_validations(failures_df)
         if failure_errors:
             raise SystemExit("\n".join(failure_errors))
         write_csv(failures_df, failures_path)
@@ -261,18 +393,25 @@ def main() -> None:
                     "output_dir": str(args.output_dir),
                     "question_id": args.question_id,
                     "row_count": int(len(targets_df)),
-                    "failed_count": int(len(failures_df)),
+                    "failure_count": int(len(failures_df)),
                     "model": args.model,
+                    "batch_size": args.batch_size,
                     "created_at": utc_now_iso(),
                 },
                 args.log,
             )
-        raise SystemExit(f"Embedding requests failed after retries. See {failures_path}")
+        return
+
+    if len(targets_df) > 0:
+        embedding_errors = run_embeddings_array_validations(
+            embeddings,
+            metadata_row_count=int(len(targets_df)),
+            metadata_status="completed",
+        )
+        if embedding_errors:
+            raise SystemExit("\n".join(embedding_errors))
 
     np.save(embeddings_path, embeddings)
-    embedding_array_errors = run_embeddings_array_validations(embeddings, metadata_status="completed")
-    if embedding_array_errors:
-        raise SystemExit("\n".join(embedding_array_errors))
     metadata_payload = build_metadata_payload(
         screened_input_path=args.input,
         model=args.model,

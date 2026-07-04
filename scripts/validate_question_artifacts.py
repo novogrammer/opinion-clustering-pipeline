@@ -6,19 +6,26 @@ from pathlib import Path
 
 import numpy as np
 
-from classification_common import CATEGORY_MASTER_COLUMNS, FINAL_LABEL_COLUMNS
-from clustering_common import CLUSTER_COLUMNS
+from classification import (
+    CATEGORY_MASTER_COLUMNS,
+    FINAL_LABEL_COLUMNS,
+    run_category_master_validations,
+    run_final_label_validations,
+)
+from clustering import (
+    CLUSTER_COLUMNS,
+    run_cluster_validations,
+    run_clustering_metadata_validations,
+)
 from common import append_jsonl, read_csv, utc_now_iso, validate_required_columns
-from review_common import REVIEW_COLUMNS
-from validate_category_master import run_validations as run_category_master_validations
-from validate_clustering_metadata import run_validations as run_clustering_metadata_validations
-from validate_clusters import run_validations as run_clusters_validations
-from validate_embedding_failures import EMBEDDING_FAILURE_COLUMNS, run_validations as run_embedding_failure_validations
-from validate_embedding_metadata import run_validations as run_embedding_metadata_validations
-from validate_embeddings_array import run_validations as run_embeddings_array_validations
-from validate_final_labels import run_validations as run_final_labels_validations
+from embeddings import (
+    FAILURE_COLUMNS,
+    run_embedding_metadata_validations,
+    run_embeddings_array_validations,
+    run_failure_validations,
+)
+from review_prep import REVIEW_COLUMNS, run_review_log_validations
 from validate_jsonl_log import run_validations as run_jsonl_log_validations
-from validate_review_log import run_validations as run_review_log_validations
 
 
 def validate_question_id_column(df, expected_question_id: str, label: str) -> list[str]:
@@ -51,28 +58,25 @@ def collect_question_errors(question_dir: Path) -> list[str]:
     screened_path = project_dir / "02_screening" / "screened_responses.csv"
 
     stage_03_started = any(path.exists() for path in [embeddings_path, embedding_metadata_path, embedding_failures_path, embeddings_dir / "embedding.log"])
-    stage_04_started = stage_03_started or any(path.exists() for path in [clusters_path, clustering_metadata_path, clustering_dir / "clustering.log"])
-    stage_05_started = stage_04_started or any(path.exists() for path in [category_master_path, final_labels_path, classification_dir / "classification.log"])
-    stage_06_started = stage_05_started or any(path.exists() for path in [review_log_path, review_dir / "review.log"])
+    stage_04_started = any(path.exists() for path in [clusters_path, clustering_metadata_path, clustering_dir / "clustering.log"])
+    stage_05_started = any(path.exists() for path in [category_master_path, final_labels_path, classification_dir / "classification.log"])
+    stage_06_started = any(path.exists() for path in [review_log_path, review_dir / "review.log"])
 
-    if stage_03_started:
+    if stage_03_started or stage_04_started or stage_05_started or stage_06_started:
         if not embeddings_path.exists():
             errors.append(f"Missing file: embeddings.npy ({embeddings_path})")
         if not embedding_metadata_path.exists():
             errors.append(f"Missing file: embedding_metadata.json ({embedding_metadata_path})")
-
-    if stage_04_started:
+    if stage_04_started or stage_05_started or stage_06_started:
         if not clusters_path.exists():
             errors.append(f"Missing file: clusters.csv ({clusters_path})")
         if not clustering_metadata_path.exists():
             errors.append(f"Missing file: clustering_metadata.json ({clustering_metadata_path})")
-
-    if stage_05_started:
+    if stage_05_started or stage_06_started:
         if not category_master_path.exists():
             errors.append(f"Missing file: category_master.csv ({category_master_path})")
         if not final_labels_path.exists():
             errors.append(f"Missing file: final_labels.csv ({final_labels_path})")
-
     if stage_06_started and not review_log_path.exists():
         errors.append(f"Missing file: review_log.csv ({review_log_path})")
 
@@ -104,14 +108,14 @@ def collect_question_errors(question_dir: Path) -> list[str]:
 
     if embedding_failures_path.exists():
         failures_df = read_csv(embedding_failures_path)
-        validate_required_columns(failures_df, EMBEDDING_FAILURE_COLUMNS)
-        errors.extend(f"embedding_failures.csv: {message}" for message in run_embedding_failure_validations(failures_df))
+        validate_required_columns(failures_df, FAILURE_COLUMNS)
+        errors.extend(f"embedding_failures.csv: {message}" for message in run_failure_validations(failures_df))
         errors.extend(validate_question_id_column(failures_df, expected_question_id, "embedding_failures.csv"))
 
     if clusters_path.exists():
         clusters_df = read_csv(clusters_path)
         validate_required_columns(clusters_df, CLUSTER_COLUMNS)
-        errors.extend(f"clusters.csv: {message}" for message in run_clusters_validations(clusters_df))
+        errors.extend(f"clusters.csv: {message}" for message in run_cluster_validations(clusters_df))
         errors.extend(validate_question_id_column(clusters_df, expected_question_id, "clusters.csv"))
 
     if clustering_metadata_path.exists():
@@ -134,7 +138,7 @@ def collect_question_errors(question_dir: Path) -> list[str]:
     if final_labels_path.exists():
         final_labels_df = read_csv(final_labels_path)
         validate_required_columns(final_labels_df, FINAL_LABEL_COLUMNS)
-        errors.extend(f"final_labels.csv: {message}" for message in run_final_labels_validations(final_labels_df))
+        errors.extend(f"final_labels.csv: {message}" for message in run_final_label_validations(final_labels_df))
         errors.extend(validate_question_id_column(final_labels_df, expected_question_id, "final_labels.csv"))
 
     if review_log_path.exists():
@@ -178,7 +182,6 @@ def main() -> None:
     }
     if args.log is not None:
         append_jsonl(log_payload, args.log)
-
     if errors:
         raise SystemExit("\n".join(errors))
 

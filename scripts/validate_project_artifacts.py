@@ -4,11 +4,11 @@ import argparse
 from pathlib import Path
 
 from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns
+from normalize_processed import run_validations as run_processed_validations
+from screening import SCREENED_COLUMNS, run_validations as run_screened_validations
 from validate_jsonl_log import run_validations as run_jsonl_log_validations
-from validate_processed import run_validations as run_processed_validations
 from validate_question_artifacts import collect_question_errors
 from validate_raw_to_processed_mapping import run_validations as run_raw_to_processed_mapping_validations
-from validate_screened_responses import SCREENED_COLUMNS, run_validations as run_screened_responses_validations
 
 
 def validate_question_dir(question_dir: Path) -> list[str]:
@@ -65,7 +65,7 @@ def main() -> None:
     if screened_path.exists():
         screened_df = read_csv(screened_path)
         validate_required_columns(screened_df, SCREENED_COLUMNS)
-        errors.extend(f"02_screening/screened_responses.csv: {message}" for message in run_screened_responses_validations(screened_df))
+        errors.extend(f"02_screening/screened_responses.csv: {message}" for message in run_screened_validations(screened_df))
 
     if mapping_path.exists():
         mapping_errors = run_raw_to_processed_mapping_validations(mapping_path.read_text(encoding="utf-8"))
@@ -89,7 +89,6 @@ def main() -> None:
     }
     if args.log is not None:
         append_jsonl(log_payload, args.log)
-
     if errors:
         raise SystemExit("\n".join(errors))
 

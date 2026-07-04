@@ -2,22 +2,273 @@ from __future__ import annotations
 
 import argparse
 import re
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
 
-from classification_common import CATEGORY_MASTER_COLUMNS, FINAL_LABEL_COLUMNS, OVERRIDE_RULE_COLUMNS
-from classification_keywords import build_categories_df, collect_category_keywords, collect_exclude_keywords, normalize_text, split_keywords
 from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv
-from validate_category_master import run_validations as run_category_master_validations
-from validate_final_labels import run_validations as run_final_labels_validations
-from validate_override_rules import run_validations as run_override_rule_validations
-from validate_screened_responses import run_validations as run_screened_validations
+from screening import SCREENED_COLUMNS, run_validations as run_screened_validations
 
+
+CATEGORY_MASTER_COLUMNS = [
+    "category_id",
+    "category_name",
+    "category_definition",
+    "include_criteria",
+    "exclude_criteria",
+    "example_positive",
+    "example_negative",
+]
+OVERRIDE_RULE_COLUMNS = [
+    "rule_id",
+    "question_id",
+    "match_type",
+    "pattern",
+    "override_category_id",
+    "override_category_name",
+    "needs_human_review",
+    "priority",
+    "note",
+]
+FINAL_LABEL_COLUMNS = [
+    "response_id",
+    "question_id",
+    "answer_text",
+    "predicted_category_id",
+    "predicted_category_name",
+    "confidence",
+    "reason",
+    "needs_human_review",
+]
 FALLBACK_CATEGORY_ID = "OTHER"
 FALLBACK_CATEGORY_NAME = "その他"
 NEGATION_TERMS = ["ない", "ぬ", "ません", "ではない", "じゃない", "なく", "ず", "微妙", "不満", "困る"]
 MULTI_TOPIC_MARKERS = ["。", "、", " and ", "・", "/", "また", "けど", "が", "しかし"]
+
+
+def normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value)
+    return normalized.strip()
+
+
+def split_keywords(value: str) -> list[str]:
+    normalized = normalize_text(value)
+    if not normalized:
+        return []
+    parts = re.split(r"[\n,、。/・;；|]+", normalized)
+    return [part.strip() for part in parts if part.strip()]
+
+
+def collect_category_keywords(row: pd.Series) -> list[str]:
+    keywords: list[str] = []
+    for column in ["category_name", "category_definition", "include_criteria", "example_positive"]:
+        keywords.extend(split_keywords(str(row[column])))
+    seen: set[str] = set()
+    unique_keywords: list[str] = []
+    for keyword in keywords:
+        folded = keyword.casefold()
+        if folded in seen:
+            continue
+        seen.add(folded)
+        unique_keywords.append(keyword)
+    return unique_keywords
+
+
+def collect_exclude_keywords(row: pd.Series) -> list[str]:
+    keywords: list[str] = []
+    for column in ["exclude_criteria", "example_negative"]:
+        keywords.extend(split_keywords(str(row[column])))
+    return keywords
+
+
+def build_categories_df(category_master_df: pd.DataFrame) -> list[dict[str, object]]:
+    categories: list[dict[str, object]] = []
+    for _, row in category_master_df.iterrows():
+        categories.append(
+            {
+                "category_id": str(row["category_id"]),
+                "category_name": str(row["category_name"]),
+                "keywords": collect_category_keywords(row),
+                "exclude_keywords": collect_exclude_keywords(row),
+            }
+        )
+    return categories
+
+
+def validate_no_duplicate_category_ids(df: pd.DataFrame) -> list[str]:
+    duplicate_mask = df["category_id"].duplicated(keep=False)
+    duplicates = df.loc[duplicate_mask, "category_id"].tolist()
+    if not duplicates:
+        return []
+    joined = ", ".join(dict.fromkeys(duplicates))
+    return [f"Duplicate category_id values found: {joined}"]
+
+
+def validate_no_blank_category_values(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    for column in ["category_id", "category_name", "category_definition"]:
+        blank_mask = df[column].map(lambda value: str(value).strip() == "")
+        count = int(blank_mask.sum())
+        if count > 0:
+            errors.append(f"Blank values found in {column}: {count}")
+    return errors
+
+
+def validate_keyword_coverage(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    categories = build_categories_df(df)
+    for category in categories:
+        if len(category["keywords"]) == 0:
+            errors.append(f"Category has no usable keywords: {category['category_id']}")
+    return errors
+
+
+def run_category_master_validations(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    errors.extend(validate_no_duplicate_category_ids(df))
+    errors.extend(validate_no_blank_category_values(df))
+    errors.extend(validate_keyword_coverage(df))
+    return errors
+
+
+def validate_override_match_type(df: pd.DataFrame) -> list[str]:
+    allowed = {"exact", "contains", "regex"}
+    invalid_rows = [
+        str(index + 1)
+        for index, value in enumerate(df["match_type"].astype(str).str.lower())
+        if value not in allowed
+    ]
+    if not invalid_rows:
+        return []
+    return [f"Invalid match_type values at rows: {', '.join(invalid_rows)}"]
+
+
+def validate_override_boolean_column(df: pd.DataFrame, column: str) -> list[str]:
+    allowed = {"true", "false"}
+    invalid_rows = [
+        str(index + 1)
+        for index, value in enumerate(df[column].astype(str).str.lower())
+        if value not in allowed
+    ]
+    if not invalid_rows:
+        return []
+    return [f"Invalid boolean values in {column} at rows: {', '.join(invalid_rows)}"]
+
+
+def validate_override_priority(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    for idx, value in enumerate(df["priority"], start=1):
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            errors.append(f"Invalid priority at row {idx}: {value}")
+            continue
+        if parsed < 0:
+            errors.append(f"Negative priority at row {idx}: {value}")
+    return errors
+
+
+def validate_override_required_text(df: pd.DataFrame, columns: list[str]) -> list[str]:
+    errors: list[str] = []
+    for column in columns:
+        blank_mask = df[column].map(lambda value: str(value).strip() == "")
+        count = int(blank_mask.sum())
+        if count > 0:
+            errors.append(f"Blank values found in {column}: {count}")
+    return errors
+
+
+def validate_no_duplicate_rule_ids(df: pd.DataFrame) -> list[str]:
+    duplicate_mask = df["rule_id"].duplicated(keep=False)
+    duplicates = df.loc[duplicate_mask, "rule_id"].tolist()
+    if not duplicates:
+        return []
+    joined = ", ".join(dict.fromkeys(duplicates))
+    return [f"Duplicate rule_id values found: {joined}"]
+
+
+def run_override_rule_validations(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    errors.extend(
+        validate_override_required_text(
+            df,
+            [
+                "rule_id",
+                "question_id",
+                "match_type",
+                "pattern",
+                "override_category_id",
+                "override_category_name",
+                "needs_human_review",
+                "priority",
+            ],
+        )
+    )
+    errors.extend(validate_no_duplicate_rule_ids(df))
+    errors.extend(validate_override_match_type(df))
+    errors.extend(validate_override_boolean_column(df, "needs_human_review"))
+    errors.extend(validate_override_priority(df))
+    return errors
+
+
+def validate_no_duplicate_response_ids(df: pd.DataFrame) -> list[str]:
+    duplicate_mask = df["response_id"].duplicated(keep=False)
+    duplicates = df.loc[duplicate_mask, "response_id"].tolist()
+    if not duplicates:
+        return []
+    joined = ", ".join(dict.fromkeys(duplicates))
+    return [f"Duplicate response_id values found: {joined}"]
+
+
+def validate_confidence_range(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    for idx, value in enumerate(df["confidence"], start=1):
+        try:
+            confidence = float(value)
+        except (TypeError, ValueError):
+            errors.append(f"Invalid confidence at row {idx}: {value}")
+            continue
+        if confidence < 0 or confidence > 1:
+            errors.append(f"Out-of-range confidence at row {idx}: {value}")
+    return errors
+
+
+def validate_boolean_column(df: pd.DataFrame, column: str) -> list[str]:
+    allowed = {"true", "false"}
+    invalid_rows = [
+        str(index + 1)
+        for index, value in enumerate(df[column].astype(str).str.lower())
+        if value not in allowed
+    ]
+    if not invalid_rows:
+        return []
+    return [f"Invalid boolean values in {column} at rows: {', '.join(invalid_rows)}"]
+
+
+def validate_required_text(df: pd.DataFrame, columns: list[str]) -> list[str]:
+    errors: list[str] = []
+    for column in columns:
+        blank_mask = df[column].map(lambda value: str(value).strip() == "")
+        count = int(blank_mask.sum())
+        if count > 0:
+            errors.append(f"Blank values found in {column}: {count}")
+    return errors
+
+
+def run_final_label_validations(df: pd.DataFrame) -> list[str]:
+    errors: list[str] = []
+    errors.extend(validate_no_duplicate_response_ids(df))
+    errors.extend(validate_confidence_range(df))
+    errors.extend(validate_boolean_column(df, "needs_human_review"))
+    errors.extend(
+        validate_required_text(
+            df,
+            ["response_id", "question_id", "answer_text", "predicted_category_id", "predicted_category_name", "reason"],
+        )
+    )
+    return errors
+
 
 def parse_bool(value: object) -> bool:
     return str(value).strip().lower() == "true"
@@ -200,16 +451,13 @@ def classify_row(
         f"gap={score_gap} "
         f"flags={'|'.join(flags) if flags else 'none'}"
     )
-    needs_human_review = bool(flags)
-
     return {
         "predicted_category_id": top["category_id"],
         "predicted_category_name": top["category_name"],
         "confidence": confidence,
         "reason": reason,
-        "needs_human_review": needs_human_review,
+        "needs_human_review": bool(flags),
     }
-
 
 
 def build_final_labels_df(
@@ -223,7 +471,6 @@ def build_final_labels_df(
         (responses_df["question_id"] == question_id)
         & (responses_df["is_target"].astype(str).str.lower() == "true")
     ].copy()
-
     classifications = filtered["answer_text"].map(
         lambda answer_text: classify_row(
             answer_text=str(answer_text),
@@ -237,10 +484,7 @@ def build_final_labels_df(
     return filtered[FINAL_LABEL_COLUMNS]
 
 
-def validate_predicted_category_ids(
-    final_labels_df: pd.DataFrame,
-    category_master_df: pd.DataFrame,
-) -> list[str]:
+def validate_predicted_category_ids(final_labels_df: pd.DataFrame, category_master_df: pd.DataFrame) -> list[str]:
     allowed_category_ids = set(category_master_df["category_id"].astype(str).tolist()) | {FALLBACK_CATEGORY_ID}
     predicted_ids = set(final_labels_df["predicted_category_id"].astype(str).tolist())
     invalid_ids = sorted(predicted_ids - allowed_category_ids)
@@ -254,12 +498,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path, help="Path to screened_responses.csv")
     parser.add_argument("--question-id", required=True, help="Target question_id")
     parser.add_argument("--category-master", required=True, type=Path, help="Path to category master CSV")
-    parser.add_argument(
-        "--override-rules",
-        type=Path,
-        default=None,
-        help="Optional path to manual_override_rules.csv",
-    )
+    parser.add_argument("--override-rules", type=Path, default=None, help="Optional path to manual_override_rules.csv")
     parser.add_argument("--output", required=True, type=Path, help="Path to final_labels.csv")
     parser.add_argument("--confidence-threshold", type=float, default=0.6)
     parser.add_argument("--log", type=Path, default=None, help="Optional path to append execution logs as JSONL")
@@ -269,7 +508,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     responses_df = read_csv(args.input)
-    validate_required_columns(responses_df, REQUIRED_RESPONSE_COLUMNS + ["is_target", "screening_reason"])
+    validate_required_columns(responses_df, SCREENED_COLUMNS)
     screened_errors = run_screened_validations(responses_df)
     if screened_errors:
         raise SystemExit("\n".join(screened_errors))
@@ -292,6 +531,7 @@ def main() -> None:
         if override_rule_errors:
             raise SystemExit("\n".join(override_rule_errors))
     override_rules = load_override_rules(override_rules_path, args.question_id)
+
     final_labels_df = build_final_labels_df(
         responses_df=responses_df,
         categories=categories,
@@ -299,7 +539,7 @@ def main() -> None:
         confidence_threshold=args.confidence_threshold,
         override_rules=override_rules,
     )
-    final_label_errors = run_final_labels_validations(final_labels_df)
+    final_label_errors = run_final_label_validations(final_labels_df)
     final_label_errors.extend(validate_predicted_category_ids(final_labels_df, category_master_df))
     if final_label_errors:
         raise SystemExit("\n".join(final_label_errors))

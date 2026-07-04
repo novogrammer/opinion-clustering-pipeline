@@ -5,13 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from common import (
-    append_jsonl,
-    utc_now_iso,
-    validate_identifier,
-    validate_project_scaffold,
-    validate_question_scaffold,
-)
+from common import append_jsonl, utc_now_iso, validate_identifier, validate_project_scaffold, validate_question_scaffold
 
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -43,13 +37,7 @@ def pipeline_log_path(project_name: str) -> Path:
     return project_log_path(project_name, "pipeline.log")
 
 
-def run_pipeline_command(
-    *,
-    project_name: str,
-    command_name: str,
-    script_name: str,
-    script_args: list[str],
-) -> None:
+def run_pipeline_command(*, project_name: str, command_name: str, script_name: str, script_args: list[str]) -> None:
     status = "success"
     error_message = ""
     try:
@@ -91,13 +79,10 @@ def validate_public_identifiers(args: argparse.Namespace) -> None:
 def validate_command_context(args: argparse.Namespace) -> None:
     if args.command == "init-project":
         return
-
     current_project_dir = project_dir(args.project_name)
     validate_project_scaffold(current_project_dir)
-
-    if args.command == "init-question":
+    if args.command in {"init-question", "validate-processed", "validate-screening"}:
         return
-
     if hasattr(args, "question_id"):
         validate_question_scaffold(current_project_dir, args.question_id)
 
@@ -131,9 +116,6 @@ def build_parser() -> argparse.ArgumentParser:
     subparser = subparsers.add_parser("validate-processed", help="Validate 01_processed")
     add_project_argument(subparser)
 
-    subparser = subparsers.add_parser("validate-mapping", help="Validate raw_to_processed mapping")
-    add_project_argument(subparser)
-
     subparser = subparsers.add_parser("screening", help="Generate 02_screening/screened_responses.csv")
     add_project_argument(subparser)
 
@@ -149,18 +131,6 @@ def build_parser() -> argparse.ArgumentParser:
     subparser.add_argument("--retry-base-seconds", type=float, default=1.0)
     subparser.add_argument("--force", action="store_true")
 
-    subparser = subparsers.add_parser("validate-embedding-metadata", help="Validate embedding_metadata.json")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-embedding-failures", help="Validate embedding_failures.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-embeddings-array", help="Validate embeddings.npy")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
     subparser = subparsers.add_parser("clustering", help="Generate 04_clustering artifacts")
     add_project_argument(subparser)
     add_question_argument(subparser)
@@ -171,31 +141,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparser.add_argument("--random-state", type=int, default=42)
     subparser.add_argument("--force", action="store_true")
 
-    subparser = subparsers.add_parser("validate-clusters", help="Validate clusters.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-clustering-metadata", help="Validate clustering_metadata.json")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-category-master", help="Validate category_master.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
     subparser = subparsers.add_parser("classification", help="Generate 05_classification/final_labels.csv")
     add_project_argument(subparser)
     add_question_argument(subparser)
 
-    subparser = subparsers.add_parser("validate-final-labels", help="Validate final_labels.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
     subparser = subparsers.add_parser("review", help="Generate 06_review/review_log.csv")
-    add_project_argument(subparser)
-    add_question_argument(subparser)
-
-    subparser = subparsers.add_parser("validate-review-log", help="Validate review_log.csv")
     add_project_argument(subparser)
     add_question_argument(subparser)
 
@@ -279,17 +229,12 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="validate_processed.py",
-            script_args=["--input", str(project_dir(args.project_name) / "01_processed" / "responses_normalized.csv")],
-        )
-        return
-
-    if args.command == "validate-mapping":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_raw_to_processed_mapping.py",
-            script_args=["--input", str(project_dir(args.project_name) / "99_logs" / "raw_to_processed_mapping.md")],
+            script_name="normalize_processed.py",
+            script_args=[
+                "--input",
+                str(project_dir(args.project_name) / "01_processed" / "responses_normalized.csv"),
+                "--validate",
+            ],
         )
         return
 
@@ -313,8 +258,12 @@ def main() -> None:
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
-            script_name="validate_screened_responses.py",
-            script_args=["--input", str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv")],
+            script_name="screening.py",
+            script_args=[
+                "--input",
+                str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
+                "--validate",
+            ],
         )
         return
 
@@ -344,48 +293,6 @@ def main() -> None:
             command_name=args.command,
             script_name="embeddings.py",
             script_args=command_args,
-        )
-        return
-
-    if args.command == "validate-embedding-metadata":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_embedding_metadata.py",
-            script_args=[
-                "--input",
-                str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embedding_metadata.json"),
-                "--screened",
-                str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
-                "--embeddings",
-                str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embeddings.npy"),
-                "--failures",
-                str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embedding_failures.csv"),
-            ],
-        )
-        return
-
-    if args.command == "validate-embedding-failures":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_embedding_failures.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embedding_failures.csv")],
-        )
-        return
-
-    if args.command == "validate-embeddings-array":
-        embedding_dir = question_dir(args.project_name, args.question_id) / "03_embeddings"
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_embeddings_array.py",
-            script_args=[
-                "--input",
-                str(embedding_dir / "embeddings.npy"),
-                "--metadata",
-                str(embedding_dir / "embedding_metadata.json"),
-            ],
         )
         return
 
@@ -421,42 +328,6 @@ def main() -> None:
         )
         return
 
-    if args.command == "validate-clusters":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_clusters.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "04_clustering" / "clusters.csv")],
-        )
-        return
-
-    if args.command == "validate-clustering-metadata":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_clustering_metadata.py",
-            script_args=[
-                "--input",
-                str(question_dir(args.project_name, args.question_id) / "04_clustering" / "clustering_metadata.json"),
-                "--screened",
-                str(project_dir(args.project_name) / "02_screening" / "screened_responses.csv"),
-                "--embeddings",
-                str(question_dir(args.project_name, args.question_id) / "03_embeddings" / "embeddings.npy"),
-                "--clusters",
-                str(question_dir(args.project_name, args.question_id) / "04_clustering" / "clusters.csv"),
-            ],
-        )
-        return
-
-    if args.command == "validate-category-master":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_category_master.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "category_master.csv")],
-        )
-        return
-
     if args.command == "classification":
         run_pipeline_command(
             project_name=args.project_name,
@@ -474,15 +345,6 @@ def main() -> None:
                 "--log",
                 str(question_stage_log_path(args.project_name, args.question_id, "05_classification", "classification.log")),
             ],
-        )
-        return
-
-    if args.command == "validate-final-labels":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_final_labels.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "05_classification" / "final_labels.csv")],
         )
         return
 
@@ -504,21 +366,15 @@ def main() -> None:
         )
         return
 
-    if args.command == "validate-review-log":
-        run_pipeline_command(
-            project_name=args.project_name,
-            command_name=args.command,
-            script_name="validate_review_log.py",
-            script_args=["--input", str(question_dir(args.project_name, args.question_id) / "06_review" / "review_log.csv")],
-        )
-        return
-
     if args.command == "validate-question":
         run_pipeline_command(
             project_name=args.project_name,
             command_name=args.command,
             script_name="validate_question_artifacts.py",
-            script_args=["--question-dir", str(question_dir(args.project_name, args.question_id))],
+            script_args=[
+                "--question-dir",
+                str(question_dir(args.project_name, args.question_id)),
+            ],
         )
         return
 
@@ -527,7 +383,10 @@ def main() -> None:
             project_name=args.project_name,
             command_name=args.command,
             script_name="validate_project_artifacts.py",
-            script_args=["--project-dir", str(project_dir(args.project_name))],
+            script_args=[
+                "--project-dir",
+                str(project_dir(args.project_name)),
+            ],
         )
         return
 
@@ -536,11 +395,14 @@ def main() -> None:
             project_name=args.project_name,
             command_name=args.command,
             script_name="validate_jsonl_log.py",
-            script_args=["--input", str(project_dir(args.project_name) / "99_logs" / args.log_name)],
+            script_args=[
+                "--input",
+                str(project_log_path(args.project_name, args.log_name)),
+            ],
         )
         return
 
-    raise ValueError(f"Unknown command: {args.command}")
+    raise SystemExit(f"Unknown command: {args.command}")
 
 
 if __name__ == "__main__":

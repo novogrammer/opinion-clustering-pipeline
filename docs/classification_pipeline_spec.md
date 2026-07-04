@@ -82,6 +82,7 @@ support_voice_nps_wave1
 - ディレクトリ名としてそのまま使う
 
 テンプレートは内部実装とし、利用者向けの公開I/Fは `python scripts/pipeline.py <command> ...` に固定する。  
+各ステージは「1コマンドで実行し、主成果物を1つ置く」を原則とする。  
 コマンド詳細は `README.md` と `scripts/README.md` に寄せ、この文書では工程仕様だけを扱う。
 
 `init-project` と `init-question` は sample 成果物を実案件ディレクトリへ複製しない前提とする。
@@ -652,6 +653,4 @@ python scripts/pipeline.py validate-log \
 3. `02_screening` で分類対象判定を行う
 4. `question_id` ごとにEmbeddingを生成して保存する
 5. `question_id` ごとにクラスタリングする
-6. クラスタ要約CSVを出す
-
-全件への最終分類は、その後の第2段階とする。
+6. `final_labels.csv` と `review_log.csv` まで出せる

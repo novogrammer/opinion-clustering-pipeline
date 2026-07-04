@@ -136,6 +136,6 @@ python scripts/pipeline.py validate-project --project-name your_project_name
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 
-CLI 一覧は `scripts/README.md`、短縮呼び出しは `Makefile` を参照。
+CLI 一覧は `scripts/README.md` を参照。
 
 詳細仕様は `docs/classification_pipeline_spec.md` を参照。

@@ -122,5 +122,3 @@ override ルール追加やカテゴリ定義の見直し材料に使う。
 
 `override_rule_summary.py` は `override_rule_hits.csv` を rule 単位に集約する。  
 ヒット件数が多すぎる rule や、想定より広く当たる rule の確認に使う。
-
-短縮呼び出しは `Makefile` を使う。

@@ -1,3 +1,0 @@
-response_id,question_id,answer_text,predicted_category_id,predicted_category_name,reviewed_category_id,reviewed_category_name,confidence,reason,review_trigger,review_priority,review_comment,reviewer,reviewed_at,correction_type
-11,Q1,値上げしてから微妙,OTHER,その他,CAT003,価格不満,0.0,top=none second=none flags=no_keyword_match|negation,fallback_category|other_category|needs_human_review|low_confidence|negation,high,価格不満として扱う,reviewer_a,2026-07-04T10:00:00+00:00,fallback_to_category
-21,Q1,操作は簡単だがサポートが遅い,CAT002,使いやすさ,CAT010,サポート不満,0.667,top=CAT002:使いやすさ(score=1;matched=簡単;excluded=none) second=none gap=1 flags=multi_topic,needs_human_review|multi_topic,medium,主題はサポート不満,reviewer_b,2026-07-04T10:05:00+00:00,category_change

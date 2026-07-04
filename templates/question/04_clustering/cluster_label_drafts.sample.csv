@@ -1,3 +1,0 @@
-topic_id,draft_category_name,draft_category_definition,draft_representative_examples,draft_confidence,split_suggestion
-0,価格満足,価格や費用感に対する肯定的な評価,"料金が安い / コスパがよい",High,split not needed
-1,使いやすさ,操作性やUIに関する肯定的な評価,操作が簡単,High,split not needed

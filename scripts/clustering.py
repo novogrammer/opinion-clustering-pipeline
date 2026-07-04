@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from openai import OpenAI
 
 from common import append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv, write_json
 from embeddings import file_sha1, run_embeddings_array_validations
@@ -14,15 +13,6 @@ from screening import SCREENED_COLUMNS, run_validations as run_screened_validati
 
 
 CLUSTER_COLUMNS = ["response_id", "question_id", "topic_id", "topic_probability", "is_outlier"]
-REPRESENTATIVE_COLUMNS = ["topic_id", "response_id", "question_id", "answer_text", "topic_probability", "representative_rank"]
-DRAFT_COLUMNS = [
-    "topic_id",
-    "draft_category_name",
-    "draft_category_definition",
-    "draft_representative_examples",
-    "draft_confidence",
-    "split_suggestion",
-]
 CLUSTERING_METADATA_KEYS = [
     "created_at",
     "row_count",
@@ -161,14 +151,12 @@ def clustering_outputs_reusable(
     *,
     metadata_path: Path,
     clusters_path: Path,
-    representatives_path: Path,
-    drafts_path: Path,
     screened_path: Path,
     embeddings_path: Path,
     expected_row_count: int,
     expected_parameters: dict[str, object],
 ) -> bool:
-    if not (metadata_path.exists() and clusters_path.exists() and representatives_path.exists() and drafts_path.exists()):
+    if not (metadata_path.exists() and clusters_path.exists()):
         return False
     payload = json.loads(metadata_path.read_text(encoding="utf-8"))
     return (
@@ -189,9 +177,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run BERTopic clustering for one question.")
     parser.add_argument("--input", required=True, type=Path, help="Path to screened_responses.csv")
     parser.add_argument("--question-id", required=True, help="Target question_id")
-    parser.add_argument("--embeddings", required=True, type=Path, help="Path to embeddings.npy")
+    parser.add_argument("--embeddings", required=True, type=Path, help="Path to 03_embeddings/embeddings.npy")
     parser.add_argument("--output-dir", required=True, type=Path, help="Path to 04_clustering directory")
-    parser.add_argument("--draft-model", required=True, help="Chat model name used for cluster label drafts")
     parser.add_argument("--umap-n-neighbors", type=int, default=15)
     parser.add_argument("--umap-n-components", type=int, default=5)
     parser.add_argument("--hdbscan-min-cluster-size", type=int, default=10)
@@ -260,99 +247,6 @@ def build_single_topic_df(target_rows: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def build_representatives_df(clusters_df: pd.DataFrame, target_rows: pd.DataFrame, per_topic: int = 3) -> pd.DataFrame:
-    if len(clusters_df) == 0:
-        return pd.DataFrame(columns=REPRESENTATIVE_COLUMNS)
-    merged = clusters_df.merge(
-        target_rows[["response_id", "question_id", "answer_text"]],
-        on=["response_id", "question_id"],
-        how="left",
-    )
-    representative_frames: list[pd.DataFrame] = []
-    for topic_id, group in merged.groupby("topic_id", sort=True):
-        ordered = group.sort_values(
-            by=["topic_probability", "response_id"],
-            ascending=[False, True],
-            na_position="last",
-        ).head(per_topic).copy()
-        ordered["representative_rank"] = range(1, len(ordered) + 1)
-        representative_frames.append(ordered[REPRESENTATIVE_COLUMNS])
-    if not representative_frames:
-        return pd.DataFrame(columns=REPRESENTATIVE_COLUMNS)
-    return pd.concat(representative_frames, ignore_index=True)
-
-
-def build_draft_prompt(question_id: str, topic_id: str, representatives: pd.DataFrame) -> str:
-    lines = [
-        f"設問ID: {question_id}",
-        f"クラスタID: {topic_id}",
-        "代表回答:",
-    ]
-    for _, row in representatives.iterrows():
-        lines.append(f"- {row['answer_text']}")
-    lines.extend(
-        [
-            "",
-            "このクラスタの草案を JSON で返してください。",
-            'keys: draft_category_name, draft_category_definition, draft_representative_examples, draft_confidence, split_suggestion',
-            "draft_representative_examples は 1 つの文字列で返してください。",
-        ]
-    )
-    return "\n".join(lines)
-
-
-def parse_draft_response(content: str, topic_id: str) -> dict[str, str]:
-    stripped = content.strip()
-    if stripped.startswith("```"):
-        lines = stripped.splitlines()
-        if len(lines) >= 3:
-            stripped = "\n".join(lines[1:-1]).strip()
-    payload = json.loads(stripped or "{}")
-    return {
-        "topic_id": str(topic_id),
-        "draft_category_name": str(payload.get("draft_category_name", "")).strip(),
-        "draft_category_definition": str(payload.get("draft_category_definition", "")).strip(),
-        "draft_representative_examples": str(payload.get("draft_representative_examples", "")).strip(),
-        "draft_confidence": str(payload.get("draft_confidence", "")).strip(),
-        "split_suggestion": str(payload.get("split_suggestion", "")).strip(),
-    }
-
-
-def request_cluster_draft(client: OpenAI, model: str, question_id: str, topic_id: str, representatives: pd.DataFrame) -> dict[str, str]:
-    prompt = build_draft_prompt(question_id=question_id, topic_id=str(topic_id), representatives=representatives)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "You create short Japanese clustering drafts and always return valid JSON only.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0,
-    )
-    content = response.choices[0].message.content or "{}"
-    return parse_draft_response(content, str(topic_id))
-
-
-def build_drafts_df(representatives_df: pd.DataFrame, question_id: str, draft_model: str) -> pd.DataFrame:
-    if len(representatives_df) == 0:
-        return pd.DataFrame(columns=DRAFT_COLUMNS)
-    client = OpenAI()
-    rows: list[dict[str, str]] = []
-    for topic_id, group in representatives_df.groupby("topic_id", sort=True):
-        rows.append(
-            request_cluster_draft(
-                client=client,
-                model=draft_model,
-                question_id=question_id,
-                topic_id=str(topic_id),
-                representatives=group,
-            )
-        )
-    return pd.DataFrame(rows, columns=DRAFT_COLUMNS)
-
-
 def main() -> None:
     args = parse_args()
 
@@ -372,11 +266,8 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     clusters_path = args.output_dir / "clusters.csv"
-    representatives_path = args.output_dir / "cluster_representatives.csv"
-    drafts_path = args.output_dir / "cluster_label_drafts.csv"
     metadata_path = args.output_dir / "clustering_metadata.json"
     requested_parameters = {
-        "draft_model": args.draft_model,
         "umap_n_neighbors": args.umap_n_neighbors,
         "umap_n_components": args.umap_n_components,
         "hdbscan_min_cluster_size": args.hdbscan_min_cluster_size,
@@ -389,8 +280,6 @@ def main() -> None:
         and clustering_outputs_reusable(
             metadata_path=metadata_path,
             clusters_path=clusters_path,
-            representatives_path=representatives_path,
-            drafts_path=drafts_path,
             screened_path=args.input,
             embeddings_path=args.embeddings,
             expected_row_count=int(len(target_rows)),
@@ -417,7 +306,7 @@ def main() -> None:
         model_params = requested_parameters
     elif len(target_rows) == 1:
         clusters_df = build_single_topic_df(target_rows)
-        model_params = {"draft_model": args.draft_model, "mode": "single_document_fallback", "random_state": args.random_state}
+        model_params = {"mode": "single_document_fallback", "random_state": args.random_state}
     else:
         args.umap_n_neighbors = min(args.umap_n_neighbors, max(2, len(target_rows) - 1))
         args.umap_n_components = min(args.umap_n_components, embeddings.shape[1], len(target_rows) - 1)
@@ -428,7 +317,6 @@ def main() -> None:
         topics, probabilities = topic_model.fit_transform(docs, embeddings)
         clusters_df = build_clusters_df(target_rows, topics, probabilities)
         model_params = {
-            "draft_model": args.draft_model,
             "umap_n_neighbors": args.umap_n_neighbors,
             "umap_n_components": args.umap_n_components,
             "hdbscan_min_cluster_size": args.hdbscan_min_cluster_size,
@@ -439,11 +327,7 @@ def main() -> None:
     cluster_errors = run_cluster_validations(clusters_df)
     if cluster_errors:
         raise SystemExit("\n".join(cluster_errors))
-    representatives_df = build_representatives_df(clusters_df, target_rows)
-    drafts_df = build_drafts_df(representatives_df, args.question_id, args.draft_model)
     write_csv(clusters_df, clusters_path)
-    write_csv(representatives_df, representatives_path)
-    write_csv(drafts_df, drafts_path)
     metadata_payload = build_metadata_payload(
         screened_path=args.input,
         embeddings_path=args.embeddings,

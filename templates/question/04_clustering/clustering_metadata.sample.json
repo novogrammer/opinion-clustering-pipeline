@@ -6,7 +6,6 @@
   "input_embeddings_path": "projects/sample_project/questions/Q1/03_embeddings/embeddings.npy",
   "input_embeddings_sha1": "2222222222222222222222222222222222222222",
   "parameters": {
-    "draft_model": "gpt-4.1-mini",
     "mode": "single_document_fallback",
     "random_state": 42
   }

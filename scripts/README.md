@@ -27,10 +27,12 @@ python scripts/normalize.py \
 
 python scripts/screening.py --input projects/your_project_name/01_processed/responses_normalized.csv --output projects/your_project_name/02_screening/screened_responses.csv --log projects/your_project_name/99_logs/screening.log
 python scripts/embeddings.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/03_embeddings
-python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering --draft-model gpt-4.1-mini
-python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --category-master projects/your_project_name/questions/Q1/05_classification/category_master.csv --output-dir projects/your_project_name/questions/Q1/05_classification
+python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
+python scripts/curation.py --input projects/your_project_name/02_screening/screened_responses.csv --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --question-id Q1 --draft-model gpt-4.1-mini --output-dir projects/your_project_name/questions/Q1/05_curation
+python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --output-dir projects/your_project_name/questions/Q1/06_classification
 ```
 
-`clustering.py` は `clusters.csv` に加えて `cluster_representatives.csv` と `cluster_label_drafts.csv` を補助成果物として出す。  
+`clustering.py` は `clusters.csv` と `clustering_metadata.json` を出す。  
+`curation.py` は `category_master.csv` を主成果物とし、`cluster_representatives.csv` と `category_master_draft.csv` を補助成果物として出す。  
 `classification.py` は `final_labels.csv` に加えて `category_embeddings.npy` と `classification_metadata.json` を出す。  
 各ステージは主成果物を書き出す前に自己検査し、不整合な成果物を残さない。

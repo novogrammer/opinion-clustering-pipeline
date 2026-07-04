@@ -1,0 +1,2 @@
+left_category_id,left_category_name,right_category_id,right_category_name,shared_keywords,left_keywords_only,right_keywords_only,name_overlap,conflict_level,notes
+CAT001,価格満足,CAT003,価格不満,価格,安い|手頃|コスパ|肯定的な評価|料金が安い,高い|値上げ|不満|料金が高い,false,medium,include_criteria overlap

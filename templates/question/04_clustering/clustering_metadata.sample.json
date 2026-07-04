@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-01-01T00:00:00+00:00",
+  "row_count": 2,
+  "input_requests_path": "projects/sample_project/questions/Q1/03_embeddings/embedding_requests.csv",
+  "input_requests_sha1": "1111111111111111111111111111111111111111",
+  "input_embeddings_path": "projects/sample_project/questions/Q1/03_embeddings/embeddings.npy",
+  "input_embeddings_sha1": "2222222222222222222222222222222222222222",
+  "parameters": {
+    "mode": "single_document_fallback",
+    "random_state": 42
+  }
+}

@@ -1,0 +1,3 @@
+response_id,question_id,answer_text,rule_id,match_type,pattern,override_category_id,override_category_name,needs_human_review,priority,note
+11,Q1,値上げしてから微妙,RULE001,contains,値上げ,CAT003,価格不満,true,10,価格不満に寄せたい定型語
+31,Q1,特になし,RULE002,exact,特になし,OTHER,その他,false,20,実質無回答の取りこぼし救済

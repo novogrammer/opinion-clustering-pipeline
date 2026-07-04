@@ -1,0 +1,3 @@
+response_id,question_id,topic_id,topic_probability,is_outlier
+1,Q1,0,0.95,false
+2,Q1,1,0.88,false

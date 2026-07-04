@@ -1,0 +1,3 @@
+duplicate_group_id,question_id,response_id,canonical_response_id,duplicate_count,is_canonical,answer_text
+3d3fe0f2e6d2,Q1,1,1,2,true,料金が安い
+3d3fe0f2e6d2,Q1,7,1,2,false,料金が安い

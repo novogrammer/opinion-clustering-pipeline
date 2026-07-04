@@ -1,0 +1,3 @@
+question_id,predicted_category_id,predicted_category_name,total_count,reviewed_count,corrected_count,pending_count,skipped_count,high_priority_count,medium_priority_count,low_priority_count,correction_rate,top_review_triggers,needs_definition_review,definition_review_reason
+Q1,CAT001,価格満足,10,4,2,3,3,5,2,3,0.5,low_confidence:3|typical_match:3|negation:1,true,high_correction_rate|high_priority_concentration|low_confidence_cluster
+Q1,CAT002,使いやすさ,8,1,0,2,5,3,0,5,0.0,typical_match:4|duplicate_response:2,false,none

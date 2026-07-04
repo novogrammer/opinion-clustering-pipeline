@@ -1,0 +1,3 @@
+question_id,category_id,category_name,needs_definition_review,definition_review_reason,correction_rate,corrected_count,high_priority_count,conflict_pair_count,high_conflict_pair_count,conflict_categories,priority_score,priority_rank
+Q1,CAT001,価格満足,true,high_correction_rate|high_priority_concentration|low_confidence_cluster,0.5,2,5,1,0,CAT003:価格不満:medium,10.0,1
+Q1,CAT002,使いやすさ,false,none,0.0,0,1,0,0,,0.5,2

@@ -1,0 +1,4 @@
+response_id,question_id,answer_text,predicted_category_id,predicted_category_name,confidence,reason,needs_human_review,review_priority,review_trigger,review_status,reviewed_category_id,reviewed_category_name,review_comment,reviewer,reviewed_at,sample_reason,sample_bucket
+11,Q1,値上げしてから微妙,CAT003,価格不満,0.5,top=CAT003:価格不満(score=1;matched=値上げ;excluded=none) second=CAT001:価格満足(score=0;matched=none;excluded=none) gap=1 flags=negation|low_confidence,true,high,needs_human_review|low_confidence|negation,pending,,,,,,high_priority,high
+21,Q1,操作は簡単だがサポートが遅い,CAT002,使いやすさ,0.667,top=CAT002:使いやすさ(score=1;matched=簡単;excluded=none) second=none gap=1 flags=multi_topic,true,medium,needs_human_review|multi_topic,pending,,,,,,medium_priority_top_3,medium
+22,Q1,料金が安い,CAT001,価格満足,1.0,top=CAT001:価格満足(score=1;matched=安い;excluded=none) second=CAT002:使いやすさ(score=0;matched=none;excluded=none) gap=1 flags=none,false,high,duplicate_response,pending,,,,,,high_priority,high

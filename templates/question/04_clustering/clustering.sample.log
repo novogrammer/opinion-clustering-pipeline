@@ -1,0 +1,1 @@
+{"event":"clustering","created_at":"2026-01-01T00:00:00+00:00","input":"projects/sample_project/questions/Q1/03_embeddings/embedding_requests.csv","embeddings":"projects/sample_project/questions/Q1/03_embeddings/embeddings.npy","output_dir":"projects/sample_project/questions/Q1/04_clustering","row_count":2,"parameters":{"mode":"single_document_fallback","random_state":42}}

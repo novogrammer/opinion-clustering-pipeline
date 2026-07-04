@@ -1,0 +1,3 @@
+rule_id,question_id,match_type,pattern,override_category_id,override_category_name,needs_human_review,priority,note,approved,approved_note,source_response_id,source_predicted_category_id,source_predicted_category_name,source_review_comment,source_correction_type
+CAND001,Q1,exact,値上げしてから微妙,CAT003,価格不満,true,100,source_predicted=OTHER:その他 | source_reviewed=CAT003:価格不満 | comment=価格不満として扱う,true,採用,11,OTHER,その他,価格不満として扱う,fallback_to_category
+CAND002,Q1,exact,操作は簡単だがサポートが遅い,CAT010,サポート不満,true,101,source_predicted=CAT002:使いやすさ | source_reviewed=CAT010:サポート不満 | comment=主題はサポート不満,false,保留,21,CAT002,使いやすさ,主題はサポート不満,category_change

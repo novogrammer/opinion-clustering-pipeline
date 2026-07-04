@@ -1,0 +1,4 @@
+topic_id,response_id,question_id,answer_text,topic_probability,representative_rank
+0,1,Q1,料金が安い,0.95,1
+0,3,Q1,コスパがよい,0.91,2
+1,2,Q1,操作が簡単,0.88,1

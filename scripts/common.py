@@ -134,7 +134,6 @@ def validate_question_scaffold(project_dir: Path, question_id: str) -> None:
         question_root / "03_embeddings",
         question_root / "04_clustering",
         question_root / "05_classification",
-        question_root / "06_review",
     ]
     missing_dirs = [path for path in required_dirs if not path.is_dir()]
     if missing_dirs:

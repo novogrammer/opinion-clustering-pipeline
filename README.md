@@ -51,7 +51,6 @@ projects/
         03_embeddings/
         04_clustering/
         05_classification/
-        06_review/
     99_logs/
 ```
 
@@ -72,7 +71,7 @@ projects/
 - 案件作成は `init_project.py`
 - 設問作成は `init_question.py`
 - 生CSVの標準化は `normalize.py --input ...`
-- 以降の工程は `screening.py` から `review.py` までを順に実行する
+- 以降の工程は `screening.py` から `classification.py` までを順に実行する
 - `init_project.py` と `init_question.py` は sample 成果物を複製しない
 
 標準フロー:
@@ -85,7 +84,6 @@ python scripts/screening.py --input projects/your_project_name/01_processed/resp
 python scripts/embeddings.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/03_embeddings
 python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
 python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --category-master projects/your_project_name/questions/Q1/05_classification/category_master.csv --output projects/your_project_name/questions/Q1/05_classification/final_labels.csv
-python scripts/review.py --input projects/your_project_name/questions/Q1/05_classification/final_labels.csv --output projects/your_project_name/questions/Q1/06_review/review_log.csv
 ```
 
 `normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応までとする。  

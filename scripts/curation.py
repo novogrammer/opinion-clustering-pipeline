@@ -67,10 +67,10 @@ def validate_no_duplicate_category_ids(df: pd.DataFrame) -> list[str]:
     return [f"Duplicate category_id values found: {joined}"]
 
 
-def run_category_master_validations(df: pd.DataFrame) -> list[str]:
+def run_category_master_validations(df: pd.DataFrame, *, label: str = "category_master.csv") -> list[str]:
     errors: list[str] = []
     if len(df) == 0:
-        return ["category_master.csv must contain at least one category"]
+        return [f"{label} must contain at least one category"]
     errors.extend(validate_no_duplicate_category_ids(df))
     errors.extend(validate_required_text(df, CATEGORY_MASTER_COLUMNS))
     return errors
@@ -192,7 +192,7 @@ def build_metadata_payload(
     }
 
 
-def run_curation_metadata_validations(payload: dict[str, object], category_master_path: Path) -> list[str]:
+def run_curation_metadata_validations(payload: dict[str, object], draft_path: Path) -> list[str]:
     errors: list[str] = []
     for key in CURATION_METADATA_KEYS:
         if key not in payload:
@@ -205,8 +205,8 @@ def run_curation_metadata_validations(payload: dict[str, object], category_maste
         errors.append("row_count must be a non-negative integer")
     if not isinstance(payload.get("cluster_count"), int) or payload["cluster_count"] < 0:
         errors.append("cluster_count must be a non-negative integer")
-    if not category_master_path.exists():
-        errors.append("category_master.csv must exist when writing curation metadata")
+    if not draft_path.exists():
+        errors.append("category_master_draft.csv must exist when writing curation metadata")
     return errors
 
 
@@ -245,7 +245,6 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     representatives_path = args.output_dir / "cluster_representatives.csv"
     draft_path = args.output_dir / "category_master_draft.csv"
-    category_master_path = args.output_dir / "category_master.csv"
     metadata_path = args.output_dir / "curation_metadata.json"
 
     representatives_df = build_representatives_df(clusters_df, target_rows)
@@ -258,13 +257,12 @@ def main() -> None:
         question_id=args.question_id,
         draft_model=args.draft_model,
     )
-    category_errors = run_category_master_validations(category_master_draft_df)
+    category_errors = run_category_master_validations(category_master_draft_df, label="category_master_draft.csv")
     if category_errors:
         raise SystemExit("\n".join(category_errors))
 
     write_csv(representatives_df, representatives_path)
     write_csv(category_master_draft_df, draft_path)
-    write_csv(category_master_draft_df, category_master_path)
 
     metadata_payload = build_metadata_payload(
         question_id=args.question_id,
@@ -274,7 +272,7 @@ def main() -> None:
         screened_path=args.input,
         clusters_path=args.clusters,
     )
-    metadata_errors = run_curation_metadata_validations(metadata_payload, category_master_path)
+    metadata_errors = run_curation_metadata_validations(metadata_payload, draft_path)
     if metadata_errors:
         raise SystemExit("\n".join(metadata_errors))
     write_json(metadata_payload, metadata_path)

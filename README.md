@@ -58,7 +58,7 @@ projects/
 - `01_processed` は判断なしの整形結果
 - `02_screening` で無回答や分類対象外を文字列ルールで自動判定する
 - `02_screening` では文脈解釈をせず、空欄、定型無回答、記号のみを機械的に切り分ける
-- `05_curation` で LLM 草案を作り、人がカテゴリマスタを確定する
+- `05_curation` で代表回答と草案を見て、人が `category_master.csv` を作る
 - `06_classification` でカテゴリマスタと embedding を使ったベクトル近傍分類を行う
 - `03_embeddings` 以降は `questions/{question_id}/` 配下で設問ごとに進める
 
@@ -96,7 +96,7 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 `screening` も出力前に `screened_responses.csv` を自己検査し、`screening_reason` と `is_target` の不整合を書き出さない。
 `embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`completed` / `failed` の状態に合わない成果物を書き出さない。
 `clustering` も入力 `screened_responses.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv` と `clustering_metadata.json` の不整合を書き出さない。
-`curation` も入力 `screened_responses.csv` / `clusters.csv` と生成物の自己検査を行い、不整合を書き出さない。
+`curation` も入力 `screened_responses.csv` / `clusters.csv` と生成物の自己検査を行い、不整合な draft を書き出さない。
 `classification` も入力 `screened_responses.csv` / `embeddings.npy` / `category_master.csv` と生成物を自己検査し、不整合を書き出さない。
 標準フローの `classification.py` は単一ラベルのベクトル近傍分類を前提とする。
 
@@ -111,6 +111,9 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 - `05_curation/curation_metadata.json`
 - `06_classification/category_embeddings.npy`
 - `06_classification/classification_metadata.json`
+
+`05_curation/category_master.csv` は `curation.py` が上書きしない。  
+人が `category_master_draft.csv` をもとに作成・編集し、`classification.py` の入力として使う。
 
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。

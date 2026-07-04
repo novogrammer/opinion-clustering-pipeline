@@ -33,6 +33,7 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 ```
 
 `clustering.py` は `clusters.csv` と `clustering_metadata.json` を出す。  
-`curation.py` は `category_master.csv` を主成果物とし、`cluster_representatives.csv` と `category_master_draft.csv` を補助成果物として出す。  
+`curation.py` は `cluster_representatives.csv` と `category_master_draft.csv` を出す。  
+人は `category_master_draft.csv` をもとに `category_master.csv` を作成・編集し、`classification.py` へ渡す。  
 `classification.py` は `final_labels.csv` に加えて `category_embeddings.npy` と `classification_metadata.json` を出す。  
 各ステージは主成果物を書き出す前に自己検査し、不整合な成果物を残さない。

@@ -100,6 +100,7 @@ python scripts/pipeline.py review --project-name your_project_name --question-id
 `embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`completed` / `failed` の状態に合わない成果物を書き出さない。
 `clustering` も入力 `screened_responses.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv` と `clustering_metadata.json` の不整合を書き出さない。
 `classification` も入力 `screened_responses.csv` と `category_master.csv`、生成物 `final_labels.csv` を自己検査し、不整合を書き出さない。
+標準フローの `classification` は単一ラベル分類を前提とし、override ルールは任意入力として扱う。
 
 補助成果物:
 

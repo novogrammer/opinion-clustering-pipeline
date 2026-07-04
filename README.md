@@ -105,19 +105,6 @@ python scripts/review.py --input projects/your_project_name/questions/Q1/05_clas
 - `03_embeddings/embedding_failures.csv` (失敗時のみ)
 - `04_clustering/clustering_metadata.json`
 
-任意の横断検査:
-
-```bash
-python scripts/validate_question.py --question-dir projects/your_project_name/questions/Q1
-python scripts/validate_project.py --project-dir projects/your_project_name
-python scripts/validate_log.py --input projects/your_project_name/99_logs/raw_to_processed.log
-```
-
-`validate_question.py` は進んでいる段階までを前提に検査する。  
-たとえば `category_master.csv` だけを作った段階では、まだ `final_labels.csv` や `review_log.csv` を必須にしない。
-
-`validate_project.py` も同様に stage-aware で、`init_project.py` 実行直後の未着手状態では後段成果物を要求しない。
-
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 

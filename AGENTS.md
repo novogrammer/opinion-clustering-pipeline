@@ -15,6 +15,7 @@ Codexは、依頼された作業範囲を超えて、機能追加・設計変更
 - stage script は主成果物を作る責務に絞る
 - stage script は出力前の自己検査を内部で完結させる
 - `pipeline.py` のような中継層は作らない
+- 横断 validator は持たない
 - validator や補助処理は標準フロー外として扱う
 
 ## スコープ管理

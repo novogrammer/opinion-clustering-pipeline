@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 from pathlib import Path
 
 import pandas as pd
@@ -30,24 +29,10 @@ REVIEW_COLUMNS = [
 ]
 ALLOWED_REVIEW_TRIGGER_TOKENS = {
     "fallback_category",
-    "other_category",
     "needs_human_review",
     "low_confidence",
-    "short_answer",
-    "negation",
-    "ambiguous_match",
-    "multi_topic",
-    "pii_detected",
-    "aggressive_expression",
     "typical_match",
 }
-NEGATION_TERMS = ["ない", "ぬ", "ません", "ではない", "じゃない", "なく", "ず", "微妙", "不満", "困る"]
-AMBIGUITY_TERMS = ["ambiguous_top_score", "weak_score_gap", "no_keyword_match"]
-MULTI_TOPIC_MARKERS = ["。", "、", " and ", "・", "/", "また", "けど", "が", "しかし"]
-EMAIL_PATTERN = re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b")
-URL_PATTERN = re.compile(r"https?://[^\s]+")
-PHONE_PATTERN = re.compile(r"(?:\+?\d[\d\-\s()]{7,}\d)")
-AGGRESSIVE_TERMS = ["死ね", "最悪", "ふざけるな", "バカ", "クソ", "殺す", "詐欺"]
 
 
 def validate_status_values(df: pd.DataFrame) -> list[str]:
@@ -63,7 +48,7 @@ def validate_status_values(df: pd.DataFrame) -> list[str]:
 
 
 def validate_priority_values(df: pd.DataFrame) -> list[str]:
-    allowed = {"high", "medium", "low"}
+    allowed = {"high", "low"}
     invalid_rows = [
         str(index + 1)
         for index, value in enumerate(df["review_priority"].astype(str).str.lower())
@@ -183,49 +168,25 @@ def parse_confidence(value: object) -> float:
 
 def collect_review_triggers(row: pd.Series, confidence_threshold: float) -> list[str]:
     triggers: list[str] = []
-    answer_text = str(row["answer_text"]).strip()
-    reason = str(row["reason"]).strip()
     confidence_value = parse_confidence(row["confidence"])
 
     if str(row["predicted_category_id"]).strip() == FALLBACK_CATEGORY_ID:
         triggers.append("fallback_category")
-    if str(row["predicted_category_name"]).strip() == FALLBACK_CATEGORY_NAME:
-        triggers.append("other_category")
     if normalize_bool(row["needs_human_review"]):
         triggers.append("needs_human_review")
     if confidence_value < confidence_threshold:
         triggers.append("low_confidence")
-    if len(answer_text) <= 3:
-        triggers.append("short_answer")
-    if any(term in answer_text for term in NEGATION_TERMS):
-        triggers.append("negation")
-    if any(term in reason for term in AMBIGUITY_TERMS):
-        triggers.append("ambiguous_match")
-    if sum(answer_text.count(marker) for marker in MULTI_TOPIC_MARKERS) >= 2 or answer_text.count("\n") >= 1:
-        triggers.append("multi_topic")
-    if EMAIL_PATTERN.search(answer_text) or URL_PATTERN.search(answer_text) or PHONE_PATTERN.search(answer_text):
-        triggers.append("pii_detected")
-    if any(term in answer_text for term in AGGRESSIVE_TERMS):
-        triggers.append("aggressive_expression")
     return triggers
 
 
 def choose_priority(triggers: list[str]) -> str:
     high_priority_triggers = {
         "fallback_category",
-        "other_category",
         "needs_human_review",
         "low_confidence",
-        "short_answer",
-        "negation",
-        "ambiguous_match",
-        "pii_detected",
-        "aggressive_expression",
     }
     if any(trigger in high_priority_triggers for trigger in triggers):
         return "high"
-    if "multi_topic" in triggers:
-        return "medium"
     return "low"
 
 

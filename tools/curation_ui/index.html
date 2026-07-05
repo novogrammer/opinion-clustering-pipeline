@@ -18,7 +18,7 @@
     </section>
 
     <div class="layout">
-      <aside class="stack">
+      <section class="top-panels">
         <section class="panel stack">
           <h2>入力</h2>
           <div class="field">
@@ -56,13 +56,24 @@
           <p class="hint">通常 topic の未割当、重複 category_id、未知の category_id を確認します。</p>
         </section>
 
-        <section class="panel">
-          <div id="status" class="status">`cluster_representatives.csv` を読み込んで開始してください。</div>
-        </section>
-      </aside>
+      </section>
 
-      <section class="stack">
-        <section class="panel">
+      <section class="panel status-panel">
+        <div id="status" class="status">`cluster_representatives.csv` を読み込んで開始してください。</div>
+      </section>
+
+      <section class="bottom-layout">
+        <section class="panel left-pane">
+          <div class="section-head">
+            <h2>category 一覧</h2>
+            <button id="addCategoryButton" class="ghost" type="button">カテゴリ追加</button>
+          </div>
+          <div id="categoryTable" class="category-table">
+            <div class="empty">まだカテゴリがありません。</div>
+          </div>
+        </section>
+
+        <section class="panel right-pane">
           <div class="section-head">
             <h2>topic 一覧</h2>
           </div>
@@ -76,16 +87,6 @@
           </div>
           <div id="topics" class="topics">
             <div class="empty">まだデータがありません。</div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="section-head">
-            <h2>category 一覧</h2>
-            <button id="addCategoryButton" class="ghost" type="button">カテゴリ追加</button>
-          </div>
-          <div id="categoryTable" class="category-table">
-            <div class="empty">まだカテゴリがありません。</div>
           </div>
         </section>
       </section>

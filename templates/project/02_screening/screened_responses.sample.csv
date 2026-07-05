@@ -1,0 +1,7 @@
+response_id,question_id,question_text,answer_text,is_target,screening_reason
+1,Q1,このサービスの良かった点を教えてください,料金が安い,true,target
+2,Q1,このサービスの良かった点を教えてください,月額が手頃,true,target
+3,Q1,このサービスの良かった点を教えてください,操作が簡単,true,target
+4,Q1,このサービスの良かった点を教えてください,画面が分かりやすい,true,target
+5,Q1,このサービスの良かった点を教えてください,全部いいです,true,target
+6,Q2,改善してほしい点を教えてください,特になし,false,non_response

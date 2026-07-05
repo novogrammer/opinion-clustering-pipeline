@@ -1,0 +1,14 @@
+{
+  "model": "text-embedding-3-small",
+  "question_id": "Q1",
+  "row_count": 2,
+  "input_screened_path": "projects/sample_project/02_screening/screened_responses.csv",
+  "input_screened_sha1": "3333333333333333333333333333333333333333",
+  "input_template_version": "v1",
+  "input_template": "設問ID: {question_id}\n質問: {question_text}\n回答: {answer_text}",
+  "preprocessing_version": "screened_responses_v1",
+  "batch_size": 100,
+  "failed_count": 0,
+  "created_at": "2026-01-01T00:00:00+00:00",
+  "status": "completed"
+}

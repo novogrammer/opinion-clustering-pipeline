@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>05_curation UI</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>05_curation UI</h1>
+      <p>
+        `cluster_representatives.csv` を読み込み、`topic_id -> category_id` の対応と
+        `category_master.csv` をブラウザ内で整えます。保存先はローカルCSVのみで、サーバやビルドは使いません。
+      </p>
+    </section>
+
+    <div class="layout">
+      <section class="top-panels">
+        <section class="panel stack">
+          <h2>入力</h2>
+          <div class="field">
+            <label for="representativesFile">cluster_representatives.csv</label>
+            <input id="representativesFile" type="file" accept=".csv,text/csv">
+          </div>
+          <div class="field">
+            <label for="mappingFile">topic_category_mapping.csv</label>
+            <input id="mappingFile" type="file" accept=".csv,text/csv">
+          </div>
+          <div class="field">
+            <label for="masterFile">category_master.csv</label>
+            <input id="masterFile" type="file" accept=".csv,text/csv">
+          </div>
+          <p class="hint">後ろ2つは任意です。既存CSVを読み込むと途中から再開できます。</p>
+        </section>
+
+        <section class="panel stack">
+          <h2>概要</h2>
+          <div class="summary">
+            <div class="metric"><span class="hint">通常 topic</span><strong id="normalTopicCount">0</strong></div>
+            <div class="metric"><span class="hint">未割当 topic</span><strong id="unassignedCount">0</strong></div>
+            <div class="metric"><span class="hint">カテゴリ数</span><strong id="categoryCount">0</strong></div>
+            <div class="metric"><span class="hint">outlier</span><strong id="outlierCount">0</strong></div>
+          </div>
+        </section>
+
+        <section class="panel stack">
+          <h2>出力</h2>
+          <div class="button-row">
+            <button id="downloadMappingButton" type="button">mapping をダウンロード</button>
+            <button id="downloadMasterButton" type="button">category master をダウンロード</button>
+          </div>
+          <button id="validateButton" class="secondary" type="button">検査する</button>
+          <p class="hint">通常 topic の未割当、重複 category_id、未知の category_id を確認します。</p>
+        </section>
+
+      </section>
+
+      <section class="panel status-panel">
+        <div id="status" class="status">`cluster_representatives.csv` を読み込んで開始してください。</div>
+      </section>
+
+      <section class="bottom-layout">
+        <section class="panel left-pane">
+          <div class="section-head">
+            <h2>category 一覧</h2>
+            <button id="addCategoryButton" class="ghost" type="button">カテゴリ追加</button>
+          </div>
+          <div id="categoryTable" class="category-table">
+            <div class="empty">まだカテゴリがありません。</div>
+          </div>
+        </section>
+
+        <section class="panel right-pane">
+          <div class="section-head">
+            <h2>topic 一覧</h2>
+          </div>
+          <div class="toolbar">
+            <input id="searchInput" type="text" placeholder="topic_id / 回答文で検索">
+            <select id="sortSelect">
+              <option value="size_desc">topic_size 降順</option>
+              <option value="topic_asc">topic_id 昇順</option>
+            </select>
+            <label class="inline-label"><input id="unassignedOnly" type="checkbox"> 未割当のみ</label>
+          </div>
+          <div id="topics" class="topics">
+            <div class="empty">まだデータがありません。</div>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

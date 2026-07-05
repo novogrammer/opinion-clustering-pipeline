@@ -1,5 +1,6 @@
 pandas
 openai
+python-dotenv
 numpy
 bertopic
 umap-learn

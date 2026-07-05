@@ -5,6 +5,9 @@
 .venv/
 __pycache__/
 *.pyc
+.env
+.env.*
+!.env.example
 
 # Project data and generated artifacts
 projects/*

@@ -164,7 +164,7 @@ function renderTopics() {
               ${categoryOptions}
             </select>
           </div>
-          <button type="button" class="secondary suggest-category-button" data-topic-id="${escapeHtml(topic.topic_id)}" ${isOutlier ? "disabled" : ""}>新規カテゴリ雛形</button>
+          ${isOutlier ? '<div></div>' : `<button type="button" class="secondary suggest-category-button" data-topic-id="${escapeHtml(topic.topic_id)}">新規カテゴリ雛形</button>`}
         </div>
       </article>
     `;
@@ -246,6 +246,7 @@ function renderCategories() {
     });
     row.querySelector(".category-name-input").addEventListener("input", (event) => {
       state.categories[index].category_name = normalizeText(event.target.value);
+      renderTopics();
     });
     row.querySelector(".category-definition-input").addEventListener("input", (event) => {
       state.categories[index].category_definition = normalizeText(event.target.value);

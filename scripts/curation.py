@@ -10,7 +10,15 @@ from screening import SCREENED_COLUMNS, run_validations as run_screened_validati
 from clustering import CLUSTER_COLUMNS, run_cluster_validations
 
 
-REPRESENTATIVE_COLUMNS = ["topic_id", "response_id", "question_id", "answer_text", "topic_probability", "representative_rank"]
+REPRESENTATIVE_COLUMNS = [
+    "topic_id",
+    "topic_size",
+    "response_id",
+    "question_id",
+    "answer_text",
+    "topic_probability",
+    "representative_rank",
+]
 CURATION_METADATA_KEYS = [
     "created_at",
     "question_id",
@@ -45,7 +53,7 @@ def run_representative_validations(df: pd.DataFrame) -> list[str]:
     if len(df) == 0:
         return []
     errors.extend(validate_no_duplicate_response_ids(df))
-    errors.extend(validate_required_text(df, ["topic_id", "response_id", "question_id", "answer_text", "representative_rank"]))
+    errors.extend(validate_required_text(df, ["topic_id", "topic_size", "response_id", "question_id", "answer_text", "representative_rank"]))
     return errors
 
 
@@ -64,6 +72,7 @@ def build_representatives_df(clusters_df: pd.DataFrame, target_rows: pd.DataFram
             ascending=[False, True],
             na_position="last",
         ).head(per_topic).copy()
+        ordered["topic_size"] = int(len(group))
         ordered["representative_rank"] = range(1, len(ordered) + 1)
         representative_frames.append(ordered[REPRESENTATIVE_COLUMNS])
     if not representative_frames:

@@ -117,6 +117,32 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 
+## 05_curation の進め方
+
+`05_curation` は、人が BERTopic の山に業務上のカテゴリ名を付ける段階。
+
+手順:
+
+1. `python scripts/curation.py ...` を実行して `cluster_representatives.csv` を作る
+2. `topic_id` ごとに代表回答と `topic_size` を見て、山の意味と大きさを確認する
+3. 同じ意味の山は、同じ `category_id` に統合してよい
+4. `category_master.csv` に正式なカテゴリ辞書を作る
+5. `topic_category_mapping.csv` に `topic_id -> category_id` を記録する
+6. その 2 ファイルを `classification.py` に渡して全件へ再適用する
+
+`topic_category_mapping.csv` の記入ルール:
+
+- 1 `topic_id` は 1 `category_id` にだけ対応させる
+- 複数 `topic_id` を同じ `category_id` に統合してよい
+- `topic_id=-1` は書かない
+- 通常 topic は未対応のまま残さない
+
+`category_master.csv` の記入ルール:
+
+- `category_id` は一意にする
+- `category_name` は集計・報告で使う正式名称にする
+- `category_definition` は、そのカテゴリに含める意図が分かる短い説明にする
+
 CLI 一覧は `scripts/README.md` を参照。
 
 詳細仕様は `docs/classification_pipeline_spec.md` を参照。

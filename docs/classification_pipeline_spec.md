@@ -29,13 +29,13 @@
 
 - ダッシュボード実装
 - レポート文章の自動生成
-- 個別案件ごとの業務定義そのものの決定
+- 個別プロジェクトごとの業務定義そのものの決定
 
 ---
 
 ## 推奨フォルダ構造
 
-案件ごとに入力データ、生成Embedding、クラスタ結果、分類結果を分離する。
+プロジェクトごとに入力データ、生成Embedding、クラスタ結果、分類結果を分離する。
 
 推奨構成:
 
@@ -58,15 +58,15 @@ projects/
 
 考え方:
 
-- `docs/` は全案件共通の方針と仕様を置く
-- `projects/{project_name}/` は案件固有データと成果物を置く
-- 案件をまたいで再利用するコードは、今後 `src/` や `scripts/` に分離する
-- 案件開始時のフォルダ作成はコマンドで都度行うのではなく、template から作る前提とする
-- 段階をフォルダ名で明示し、案件の進行順が見えるようにする
+- `docs/` は全プロジェクト共通の方針と仕様を置く
+- `projects/{project_name}/` はプロジェクト固有データと成果物を置く
+- プロジェクトをまたいで再利用するコードは、今後 `src/` や `scripts/` に分離する
+- プロジェクト開始時のフォルダ作成はコマンドで都度行うのではなく、template から作る前提とする
+- 段階をフォルダ名で明示し、プロジェクトの進行順が見えるようにする
 - 連番を付けて並び順を固定する
-- `00_raw` から `02_screening` までは案件全体で共有する
+- `00_raw` から `02_screening` まではプロジェクト全体で共有する
 - `03_embeddings` 以降は `question_id` ごとに分ける
-- `scripts/` は案件固有の補助スクリプト置き場とする
+- `scripts/` はプロジェクト固有の補助スクリプト置き場とする
 
 `project_name` の例:
 
@@ -80,7 +80,7 @@ support_voice_nps_wave1
 
 - 半角英数字と `_` を使う
 - 日付や wave 番号など、後で識別に必要な情報を含める
-- 表記ゆれを防ぐため案件開始時に固定する
+- 表記ゆれを防ぐためプロジェクト開始時に固定する
 - ディレクトリ名としてそのまま使う
 
 テンプレートは内部実装とし、利用者向けの公開I/Fは `python scripts/<script>.py ...` に固定する。  
@@ -88,7 +88,7 @@ support_voice_nps_wave1
 各ステージの自己検査は stage script の内部で完結させる。  
 コマンド詳細は `README.md` と `scripts/README.md` に寄せ、この文書では工程仕様だけを扱う。
 
-`init_project.py` と `init_question.py` は sample 成果物を実案件ディレクトリへ複製しない前提とする。
+`init_project.py` と `init_question.py` は sample 成果物を実プロジェクトディレクトリへ複製しない前提とする。
 `init_question.py` は初期化済み project に対してだけ実行する前提とする。
 
 ---
@@ -123,14 +123,14 @@ support_voice_nps_wave1
 
 ## Codexによるデータ変形フロー
 
-案件ごとの元データCSVは、そのまま本パイプライン入力に合うとは限らない。  
-必要なデータ形式への変形は、案件開始時に Codex に依頼する運用を前提とする。
+プロジェクトごとの元データCSVは、そのまま本パイプライン入力に合うとは限らない。  
+必要なデータ形式への変形は、プロジェクト開始時に Codex に依頼する運用を前提とする。
 
 基本フロー:
 
 1. 元データを `projects/{project_name}/00_raw/` に置く
 2. `python scripts/normalize.py ...` で済むならその公開I/Fを使う
-3. それで足りない案件だけ、Codex に案件別の変換処理を作らせる
+3. それで足りないプロジェクトだけ、Codex にプロジェクト別の変換処理を作らせる
 4. 変換後データを `projects/{project_name}/01_processed/` に保存する
 5. その後の分類対象判定は `projects/{project_name}/02_screening/` で行う
 6. `question_id` ごとに `questions/{question_id}/` 配下で Embedding、クラスタリング、分類を進める
@@ -141,7 +141,7 @@ support_voice_nps_wave1
 - question 作成は `scripts/init_question.py`
 - `normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応まで
 - question 単位処理は `scripts/embeddings.py` 以降を直接呼ぶ
-- 案件固有の raw 変換スクリプトは `projects/{project_name}/scripts/` に置く
+- プロジェクト固有の raw 変換スクリプトは `projects/{project_name}/scripts/` に置く
 
 Codex に依頼する内容の例:
 
@@ -156,15 +156,15 @@ Codex に依頼する内容の例:
 
 - 元データは `00_raw/` に保持し、直接上書きしない
 - Codex が行った変形は、再実行できる形で残す
-- 変形内容は案件ごとに `99_logs/` に記録する
+- 変形内容はプロジェクトごとに `99_logs/` に記録する
 - 変換後データのカラム仕様はこの文書の入力データ仕様に合わせる
-- 案件固有スクリプトは `projects/{project_name}/scripts/` に置き、共通 `scripts/` と混ぜない
+- プロジェクト固有スクリプトは `projects/{project_name}/scripts/` に置き、共通 `scripts/` と混ぜない
 
 ---
 
 ## バージョン管理方針
 
-`projects/` 配下の案件データと生成成果物は、原則として Git 管理しない。
+`projects/` 配下のプロジェクトデータと生成成果物は、原則として Git 管理しない。
 
 原則として Git 管理しない対象:
 

@@ -9,7 +9,7 @@ python scripts/init_project.py --project-name your_project_name
 python scripts/init_question.py --project-dir projects/your_project_name --question-id Q1
 ```
 
-`init_project.py` と `init_question.py` は template 内の sample 成果物を案件ディレクトリに複製しない。  
+`init_project.py` と `init_question.py` は template 内の sample 成果物をプロジェクトディレクトリに複製しない。  
 `init_question.py` は初期化済み project を前提にする。
 
 ## 実行

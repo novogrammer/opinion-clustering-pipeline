@@ -49,4 +49,5 @@ sample の対応関係:
 - `templates/question/05_curation/topic_category_mapping.sample.csv`
 
 この組み合わせで `classification.py` を実行すると、`templates/question/06_classification/final_labels.sample.csv` と同じ列構成の出力を確認できる。  
-`topic_category_mapping.sample.csv` を書き換えれば、複数 topic の統合や、未対応 topic の失敗も確認できる。
+sample には、複数 topic の統合と `topic_id=-1` の outlier を含めている。  
+`topic_category_mapping.sample.csv` を書き換えれば、未対応 topic の失敗も確認できる。

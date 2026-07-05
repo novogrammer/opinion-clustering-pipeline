@@ -1,3 +1,6 @@
 response_id,question_id,answer_text,topic_id,predicted_category_id,predicted_category_name,reason,needs_human_review
 1,Q1,料金が安い,0,CAT001,価格,mapped_from_topic=0,false
-2,Q1,操作が簡単,1,CAT002,使いやすさ,mapped_from_topic=1,false
+2,Q1,月額が手頃,2,CAT001,価格,mapped_from_topic=2,false
+3,Q1,操作が簡単,1,CAT002,使いやすさ,mapped_from_topic=1,false
+4,Q1,画面が分かりやすい,1,CAT002,使いやすさ,mapped_from_topic=1,false
+5,Q1,全部いいです,-1,OTHER,その他,outlier_topic,true

@@ -143,6 +143,8 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 - `category_name` は集計・報告で使う正式名称にする
 - `category_definition` は、そのカテゴリに含める意図が分かる短い説明にする
 
+sample では、`topic_id=0` と `topic_id=2` を同じ `CAT001` に統合する例と、`topic_id=-1` が `OTHER` に落ちる例を含めている。
+
 CLI 一覧は `scripts/README.md` を参照。
 
 詳細仕様は `docs/classification_pipeline_spec.md` を参照。

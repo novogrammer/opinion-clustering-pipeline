@@ -177,3 +177,7 @@ sample では、`topic_id=0` と `topic_id=2` を同じ `CAT001` に統合する
 CLI 一覧は `scripts/README.md` を参照。
 
 詳細仕様は `docs/classification_pipeline_spec.md` を参照。
+
+## License
+
+MIT

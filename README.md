@@ -164,6 +164,16 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 
 sample では、`topic_id=0` と `topic_id=2` を同じ `CAT001` に統合する例と、`topic_id=-1` が `OTHER` に落ちる例を含めている。
 
+ローカルHTMLツールを使う場合:
+
+1. `python scripts/curation.py ...` で `cluster_representatives.csv` を作る
+2. `tools/curation_ui/index.html` をブラウザで開く
+3. `cluster_representatives.csv` を読み込む
+4. 必要なら既存の `topic_category_mapping.csv` と `category_master.csv` も読み込む
+5. topic ごとの割当を編集し、`topic_category_mapping.csv` と `category_master.csv` をダウンロードする
+
+このツールは `05_curation` の手作業を補助するUIで、`classification.py` の入力CSV仕様は変えない。
+
 CLI 一覧は `scripts/README.md` を参照。
 
 詳細仕様は `docs/classification_pipeline_spec.md` を参照。

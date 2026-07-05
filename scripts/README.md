@@ -37,6 +37,8 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 未作成時だけ `topic_category_mapping.csv` の雛形と `category_master.csv` のヘッダも置く。  
 `cluster_representatives.csv` では `topic_id` ごとの代表回答と `topic_size` を見る。  
 人はその 1 CSV を見て `category_master.csv` と `topic_category_mapping.csv` を作成・編集し、`classification.py` へ渡す。  
+ブラウザ内で編集したい場合は `tools/curation_ui/index.html` を開き、`cluster_representatives.csv` を読み込む。  
+このUIは `topic_category_mapping.csv` と `category_master.csv` を再読込でき、標準仕様のままダウンロードする。  
 `classification.py` は `final_labels.csv` と `classification_metadata.json` を出す。  
 各ステージは主成果物を書き出す前に自己検査し、不整合な成果物を残さない。
 

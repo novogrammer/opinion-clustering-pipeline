@@ -58,8 +58,8 @@ projects/
 - `01_processed` は判断なしの整形結果
 - `02_screening` で無回答や分類対象外を文字列ルールで自動判定する
 - `02_screening` では文脈解釈をせず、空欄、定型無回答、記号のみを機械的に切り分ける
-- `05_curation` で代表回答を見て、人が `category_master.csv` を作る
-- `06_classification` でカテゴリマスタと embedding を使ったベクトル近傍分類を行う
+- `05_curation` で代表回答を見て、人が `category_master.csv` と `topic_category_mapping.csv` を作る
+- `06_classification` で `topic_id` とカテゴリ対応を全件へ再適用する
 - `03_embeddings` 以降は `questions/{question_id}/` 配下で設問ごとに進める
 
 `projects/` 配下の案件データと生成成果物は、原則 Git 管理しない。管理対象は `docs/`、コード、必要なら匿名化済みサンプルだけに絞る。
@@ -86,7 +86,7 @@ python scripts/screening.py --input projects/your_project_name/01_processed/resp
 python scripts/embeddings.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/03_embeddings
 python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
 python scripts/curation.py --input projects/your_project_name/02_screening/screened_responses.csv --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/05_curation
-python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --output-dir projects/your_project_name/questions/Q1/06_classification
+python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --topic-category-mapping projects/your_project_name/questions/Q1/05_curation/topic_category_mapping.csv --output-dir projects/your_project_name/questions/Q1/06_classification
 ```
 
 `normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応までとする。  
@@ -97,8 +97,8 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 `embeddings` も入力 `screened_responses.csv` と生成物の自己検査を行い、`completed` / `failed` の状態に合わない成果物を書き出さない。
 `clustering` も入力 `screened_responses.csv` / `embeddings.npy` と生成物の自己検査を行い、`clusters.csv` と `clustering_metadata.json` の不整合を書き出さない。
 `curation` も入力 `screened_responses.csv` / `clusters.csv` と生成物の自己検査を行い、不整合な代表回答一覧を書き出さない。
-`classification` も入力 `screened_responses.csv` / `embeddings.npy` / `category_master.csv` と生成物を自己検査し、不整合を書き出さない。
-標準フローの `classification.py` は単一ラベルのベクトル近傍分類を前提とする。
+`classification` も入力 `screened_responses.csv` / `clusters.csv` / `category_master.csv` / `topic_category_mapping.csv` と生成物を自己検査し、不整合を書き出さない。
+標準フローの `classification.py` は `topic_id -> category_id` の単一ラベル再適用を前提とする。
 
 補助成果物:
 
@@ -108,11 +108,11 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 - `04_clustering/clustering_metadata.json`
 - `05_curation/cluster_representatives.csv`
 - `05_curation/curation_metadata.json`
-- `06_classification/category_embeddings.npy`
+- `05_curation/topic_category_mapping.csv`
 - `06_classification/classification_metadata.json`
 
 `05_curation/category_master.csv` は `curation.py` が上書きしない。  
-人が `cluster_representatives.csv` を見て作成・編集し、`classification.py` の入力として使う。
+人が `cluster_representatives.csv` を見て `category_master.csv` と `topic_category_mapping.csv` を作成・編集し、`classification.py` の入力として使う。
 
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。

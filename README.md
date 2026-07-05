@@ -18,6 +18,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+API 設定:
+
+- OpenAI API を使うのは `embeddings.py`
+- ルートの `.env` に `OPENAI_API_KEY` を置ける
+- `.env.example` を `.env` にコピーして使う
+- `.env` は Git 管理しない
+
+```env
+OPENAI_API_KEY=sk-...
+```
+
 ## 依存管理
 
 ルール:
@@ -33,6 +44,8 @@ pip install -r requirements.txt
 source .venv/bin/activate
 pip-compile requirements.in -o requirements.txt
 ```
+
+`requirements.in` を更新したら、その後に `pip install -r requirements.txt` を実行する。
 
 ## ディレクトリ構成
 

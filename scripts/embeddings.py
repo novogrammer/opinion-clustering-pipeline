@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 from openai import OpenAI
 
 from common import REQUIRED_RESPONSE_COLUMNS, append_jsonl, read_csv, utc_now_iso, validate_required_columns, write_csv, write_json
@@ -296,6 +297,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
     df = read_csv(args.input)
     validate_required_columns(df, SCREENED_COLUMNS)

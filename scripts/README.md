@@ -34,6 +34,7 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 
 `clustering.py` は `clusters.csv` と `clustering_metadata.json` を出す。  
 `curation.py` は `cluster_representatives.csv` を出す。  
+未作成時だけ `topic_category_mapping.csv` の雛形と `category_master.csv` のヘッダも置く。  
 `cluster_representatives.csv` では `topic_id` ごとの代表回答と `topic_size` を見る。  
 人はその 1 CSV を見て `category_master.csv` と `topic_category_mapping.csv` を作成・編集し、`classification.py` へ渡す。  
 `classification.py` は `final_labels.csv` と `classification_metadata.json` を出す。  

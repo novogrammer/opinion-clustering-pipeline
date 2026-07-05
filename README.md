@@ -73,6 +73,7 @@ projects/
 - `02_screening` で無回答や分類対象外を文字列ルールで自動判定する
 - `02_screening` では文脈解釈をせず、空欄、定型無回答、記号のみを機械的に切り分ける
 - `05_curation` で代表回答を見て、人が `category_master.csv` と `topic_category_mapping.csv` を作る
+- `05_curation` では `curation.py` が入力用の雛形も置くので、人はその続きを埋める
 - `06_classification` で `topic_id` とカテゴリ対応を全件へ再適用する
 - `03_embeddings` 以降は `questions/{question_id}/` 配下で設問ごとに進める
 
@@ -128,7 +129,9 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 - `06_classification/classification_metadata.json`
 
 `05_curation/category_master.csv` は `curation.py` が上書きしない。  
-人が `cluster_representatives.csv` を見て `category_master.csv` と `topic_category_mapping.csv` を作成・編集し、`classification.py` の入力として使う。
+`05_curation/topic_category_mapping.csv` も `curation.py` が上書きしない。  
+`curation.py` は未作成時だけ `category_master.csv` のヘッダと、通常 topic 一覧を入れた `topic_category_mapping.csv` の雛形を置く。  
+人が `cluster_representatives.csv` を見てその 2 ファイルを追記・編集し、`classification.py` の入力として使う。
 
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。

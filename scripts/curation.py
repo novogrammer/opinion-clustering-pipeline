@@ -19,6 +19,15 @@ REPRESENTATIVE_COLUMNS = [
     "topic_probability",
     "representative_rank",
 ]
+TOPIC_CATEGORY_MAPPING_COLUMNS = [
+    "topic_id",
+    "category_id",
+]
+CATEGORY_MASTER_COLUMNS = [
+    "category_id",
+    "category_name",
+    "category_definition",
+]
 CURATION_METADATA_KEYS = [
     "created_at",
     "question_id",
@@ -98,6 +107,18 @@ def build_metadata_payload(
     }
 
 
+def build_topic_category_mapping_template_df(clusters_df: pd.DataFrame) -> pd.DataFrame:
+    topic_ids = sorted(
+        {str(value).strip() for value in clusters_df["topic_id"].astype(str) if str(value).strip() != "-1"},
+        key=lambda value: int(value),
+    )
+    return pd.DataFrame({"topic_id": topic_ids, "category_id": [""] * len(topic_ids)})[TOPIC_CATEGORY_MAPPING_COLUMNS]
+
+
+def build_category_master_template_df() -> pd.DataFrame:
+    return pd.DataFrame(columns=CATEGORY_MASTER_COLUMNS)
+
+
 def run_curation_metadata_validations(payload: dict[str, object], representatives_path: Path) -> list[str]:
     errors: list[str] = []
     for key in CURATION_METADATA_KEYS:
@@ -148,6 +169,8 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     representatives_path = args.output_dir / "cluster_representatives.csv"
     metadata_path = args.output_dir / "curation_metadata.json"
+    topic_category_mapping_path = args.output_dir / "topic_category_mapping.csv"
+    category_master_path = args.output_dir / "category_master.csv"
 
     representatives_df = build_representatives_df(clusters_df, target_rows)
     representative_errors = run_representative_validations(representatives_df)
@@ -155,6 +178,10 @@ def main() -> None:
         raise SystemExit("\n".join(representative_errors))
 
     write_csv(representatives_df, representatives_path)
+    if not topic_category_mapping_path.exists():
+        write_csv(build_topic_category_mapping_template_df(clusters_df), topic_category_mapping_path)
+    if not category_master_path.exists():
+        write_csv(build_category_master_template_df(), category_master_path)
 
     metadata_payload = build_metadata_payload(
         question_id=args.question_id,

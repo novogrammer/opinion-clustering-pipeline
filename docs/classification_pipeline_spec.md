@@ -2,7 +2,7 @@
 
 ## 目的
 
-この文書は、[OpenAI APIを使った自由回答分類の整理メモ](/Users/novo/Documents/aptanastudio3workspace/opinion-clustering-pipeline/docs/openai_free_answer_classification_memo.md) を実装に落とすための仕様を定義する。
+この文書は、[OpenAI APIを使った自由回答分類の整理メモ](./openai_free_answer_classification_memo.md) を実装に落とすための仕様を定義する。
 
 ここで扱うのは以下。
 

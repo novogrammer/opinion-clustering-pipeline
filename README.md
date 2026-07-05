@@ -46,6 +46,7 @@ projects/
     00_raw/
     01_processed/
     02_screening/
+    scripts/
     questions/
       {question_id}/
         03_embeddings/
@@ -65,6 +66,7 @@ projects/
 `projects/` 配下の案件データと生成成果物は、原則 Git 管理しない。管理対象は `docs/`、コード、必要なら匿名化済みサンプルだけに絞る。
 
 共通ドキュメントは `docs/`、今後の共通コードは `src/` または `scripts/` に分ける前提とする。
+案件固有の raw 変換スクリプトは `projects/{project_name}/scripts/` に置き、共通の `scripts/` には入れない。
 
 ## 公開I/F
 
@@ -91,6 +93,7 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 
 `normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応までとする。  
 `00_raw -> 01_processed` がそれで済まない案件は、Codex が案件別スクリプトをその都度作る。
+案件別スクリプトは `projects/{project_name}/scripts/` に置き、その project の raw にだけ使う。
 
 `normalize` は出力前に `responses_normalized.csv` の必須条件を自己検査し、重複 `response_id` や必須列空欄があれば失敗させる。
 `screening` も出力前に `screened_responses.csv` を自己検査し、`screening_reason` と `is_target` の不整合を書き出さない。

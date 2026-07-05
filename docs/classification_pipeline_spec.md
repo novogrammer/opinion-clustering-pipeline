@@ -46,6 +46,7 @@ projects/
     00_raw/
     01_processed/
     02_screening/
+    scripts/
     questions/
       {question_id}/
         03_embeddings/
@@ -65,6 +66,7 @@ projects/
 - 連番を付けて並び順を固定する
 - `00_raw` から `02_screening` までは案件全体で共有する
 - `03_embeddings` 以降は `question_id` ごとに分ける
+- `scripts/` は案件固有の補助スクリプト置き場とする
 
 `project_name` の例:
 
@@ -139,6 +141,7 @@ support_voice_nps_wave1
 - question 作成は `scripts/init_question.py`
 - `normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応まで
 - question 単位処理は `scripts/embeddings.py` 以降を直接呼ぶ
+- 案件固有の raw 変換スクリプトは `projects/{project_name}/scripts/` に置く
 
 Codex に依頼する内容の例:
 
@@ -155,6 +158,7 @@ Codex に依頼する内容の例:
 - Codex が行った変形は、再実行できる形で残す
 - 変形内容は案件ごとに `99_logs/` に記録する
 - 変換後データのカラム仕様はこの文書の入力データ仕様に合わせる
+- 案件固有スクリプトは `projects/{project_name}/scripts/` に置き、共通 `scripts/` と混ぜない
 
 ---
 
@@ -167,6 +171,7 @@ Codex に依頼する内容の例:
 - `00_raw/`
 - `01_processed/`
 - `02_screening/`
+- `scripts/`
 - `questions/{question_id}/` 配下の生成成果物
 
 理由:

@@ -25,8 +25,6 @@ FINAL_LABEL_COLUMNS = [
     "topic_id",
     "predicted_category_id",
     "predicted_category_name",
-    "reason",
-    "needs_human_review",
 ]
 CLASSIFICATION_METADATA_KEYS = [
     "created_at",
@@ -92,22 +90,9 @@ def run_topic_category_mapping_validations(df: pd.DataFrame) -> list[str]:
     return errors
 
 
-def validate_boolean_column(df: pd.DataFrame, column: str) -> list[str]:
-    allowed = {"true", "false"}
-    invalid_rows = [
-        str(index + 1)
-        for index, value in enumerate(df[column].astype(str).str.lower())
-        if value not in allowed
-    ]
-    if not invalid_rows:
-        return []
-    return [f"Invalid boolean values in {column} at rows: {', '.join(invalid_rows)}"]
-
-
 def run_final_label_validations(df: pd.DataFrame) -> list[str]:
     errors: list[str] = []
     errors.extend(validate_no_duplicate_values(df, "response_id", "response_id"))
-    errors.extend(validate_boolean_column(df, "needs_human_review"))
     errors.extend(
         validate_required_text(
             df,
@@ -118,7 +103,6 @@ def run_final_label_validations(df: pd.DataFrame) -> list[str]:
                 "topic_id",
                 "predicted_category_id",
                 "predicted_category_name",
-                "reason",
             ],
         )
     )
@@ -266,16 +250,9 @@ def build_final_labels_df(
     outlier_mask = merged["topic_id"] == OUTLIER_TOPIC_ID
     merged.loc[outlier_mask, "category_id"] = FALLBACK_CATEGORY_ID
     merged.loc[outlier_mask, "category_name"] = FALLBACK_CATEGORY_NAME
-    merged.loc[outlier_mask, "reason"] = "outlier_topic"
-    merged.loc[outlier_mask, "needs_human_review"] = True
-
-    normal_mask = ~outlier_mask
-    merged.loc[normal_mask, "reason"] = merged.loc[normal_mask, "topic_id"].map(lambda value: f"mapped_from_topic={value}")
-    merged.loc[normal_mask, "needs_human_review"] = False
 
     merged["predicted_category_id"] = merged["category_id"].map(normalize_text)
     merged["predicted_category_name"] = merged["category_name"].map(normalize_text)
-    merged["needs_human_review"] = merged["needs_human_review"].map(lambda value: "true" if bool(value) else "false")
     return merged[
         [
             "response_id",
@@ -284,8 +261,6 @@ def build_final_labels_df(
             "topic_id",
             "predicted_category_id",
             "predicted_category_name",
-            "reason",
-            "needs_human_review",
         ]
     ].copy()
 

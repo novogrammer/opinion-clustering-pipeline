@@ -220,6 +220,7 @@ def request_embeddings(
                 if len(response.data) != len(batch):
                     raise ValueError(f"Embedding response count mismatch: {len(response.data)} != {len(batch)}")
                 vectors.extend(item.embedding for item in response.data)
+                print(f"embeddings progress: batch {batch_index}/{total_batches} done", flush=True)
                 break
             except Exception as exc:  # noqa: BLE001
                 if log_path is not None:
@@ -244,6 +245,7 @@ def request_embeddings(
                         if failure_frames
                         else pd.DataFrame(columns=FAILURE_COLUMNS)
                     )
+                    print(f"embeddings progress: batch {batch_index}/{total_batches} failed", flush=True)
                     return np.asarray(vectors, dtype=np.float32), failures_df
                 time.sleep(retry_base_seconds * (2**attempt))
                 attempt += 1

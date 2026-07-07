@@ -183,6 +183,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--embeddings", required=True, type=Path, help="Path to 03_embeddings/embeddings.npy")
     parser.add_argument("--output-dir", required=True, type=Path, help="Path to 04_clustering directory")
     parser.add_argument("--clusterer", choices=[CLUSTERER_HDBSCAN, CLUSTERER_KMEANS], default=CLUSTERER_HDBSCAN)
+    parser.add_argument("--k", type=int, default=DEFAULT_KMEANS_K, help="k-means cluster count (k-means only)")
     parser.add_argument("--umap-n-neighbors", type=int, default=15)
     parser.add_argument("--umap-n-components", type=int, default=5)
     parser.add_argument("--hdbscan-min-cluster-size", type=int, default=10)
@@ -306,7 +307,7 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     clusters_path = args.output_dir / "clusters.csv"
     metadata_path = args.output_dir / "clustering_metadata.json"
-    effective_k = min(DEFAULT_KMEANS_K, len(target_rows)) if args.clusterer == CLUSTERER_KMEANS else None
+    effective_k = min(args.k, len(target_rows)) if args.clusterer == CLUSTERER_KMEANS else None
     fallback_mode = "empty" if len(target_rows) == 0 else "single_document_fallback" if len(target_rows) == 1 else None
     requested_parameters = (
         {
@@ -366,7 +367,7 @@ def main() -> None:
             clusters_df, effective_k = build_kmeans_clusters_df(
                 target_rows,
                 embeddings,
-                k=DEFAULT_KMEANS_K,
+                k=args.k,
                 random_state=args.random_state,
             )
             model_params = {

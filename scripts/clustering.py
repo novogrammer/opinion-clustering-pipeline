@@ -13,7 +13,8 @@ from screening import SCREENED_COLUMNS, run_validations as run_screened_validati
 
 
 CLUSTER_COLUMNS = ["response_id", "question_id", "topic_id", "topic_probability", "is_outlier"]
-DEFAULT_KMEANS_K = 21
+DEFAULT_CLUSTERER = "kmeans"
+DEFAULT_KMEANS_K = 100
 DEFAULT_KMEANS_TEMPERATURE = 1.0
 CLUSTERER_HDBSCAN = "hdbscan"
 CLUSTERER_KMEANS = "kmeans"
@@ -183,7 +184,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--question-id", required=True, help="Target question_id")
     parser.add_argument("--embeddings", required=True, type=Path, help="Path to 03_embeddings/embeddings.npy")
     parser.add_argument("--output-dir", required=True, type=Path, help="Path to 04_clustering directory")
-    parser.add_argument("--clusterer", choices=[CLUSTERER_HDBSCAN, CLUSTERER_KMEANS], default=CLUSTERER_HDBSCAN)
+    parser.add_argument("--clusterer", choices=[CLUSTERER_HDBSCAN, CLUSTERER_KMEANS], default=DEFAULT_CLUSTERER)
     parser.add_argument("--k", type=int, default=DEFAULT_KMEANS_K, help="k-means cluster count (k-means only)")
     parser.add_argument("--umap-n-neighbors", type=int, default=15)
     parser.add_argument("--umap-n-components", type=int, default=5)

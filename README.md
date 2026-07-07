@@ -136,6 +136,14 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 `embeddings` は同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 `clustering` も同一入力・同一設定の既存成果物があれば再利用し、作り直したい場合だけ `--force` を付ける。
 
+## 運用の推奨
+
+- embedding は `text-embedding-3-small` をデフォルトにしつつ、予算が許すなら `text-embedding-3-large` を優先して比較する
+- clustering は `topic_id=-1` を減らす方向でパラメータを探る
+- clustering の単一変更では、`hdbscan_min_samples` より `umap_n_neighbors` と `umap_n_components` の影響が大きいことが多い
+
+この方針は標準フローを置き換えるものではなく、比較実験の優先順位を決めるための目安とする。
+
 ## 05_curation の進め方
 
 `05_curation` は、人が BERTopic の山に業務上のカテゴリ名を付ける段階。

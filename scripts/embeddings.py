@@ -203,11 +203,17 @@ def request_embeddings(
 ) -> tuple[np.ndarray, pd.DataFrame]:
     vectors: list[list[float]] = []
     failure_frames: list[pd.DataFrame] = []
+    total_batches = (len(targets_df) + batch_size - 1) // batch_size if len(targets_df) > 0 else 0
 
-    for start in range(0, len(targets_df), batch_size):
+    for batch_index, start in enumerate(range(0, len(targets_df), batch_size), start=1):
         batch_df = targets_df.iloc[start : start + batch_size].copy()
         batch = batch_df["embedding_input_text"].tolist()
         attempt = 0
+        print(
+            f"embeddings progress: batch {batch_index}/{total_batches} "
+            f"({len(batch_df)} rows, start={start})",
+            flush=True,
+        )
         while True:
             try:
                 response = client.embeddings.create(model=model, input=batch)

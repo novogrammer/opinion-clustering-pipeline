@@ -13,6 +13,11 @@ from screening import SCREENED_COLUMNS, run_validations as run_screened_validati
 
 
 CLUSTER_COLUMNS = ["response_id", "question_id", "topic_id", "topic_probability", "is_outlier"]
+DEFAULT_CLUSTERER = "kmeans"
+DEFAULT_KMEANS_K = 100
+DEFAULT_KMEANS_TEMPERATURE = 1.0
+CLUSTERER_HDBSCAN = "hdbscan"
+CLUSTERER_KMEANS = "kmeans"
 CLUSTERING_METADATA_KEYS = [
     "created_at",
     "row_count",
@@ -174,11 +179,13 @@ def build_target_rows(df: pd.DataFrame, question_id: str) -> pd.DataFrame:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run BERTopic clustering for one question.")
+    parser = argparse.ArgumentParser(description="Run clustering for one question.")
     parser.add_argument("--input", required=True, type=Path, help="Path to screened_responses.csv")
     parser.add_argument("--question-id", required=True, help="Target question_id")
     parser.add_argument("--embeddings", required=True, type=Path, help="Path to 03_embeddings/embeddings.npy")
     parser.add_argument("--output-dir", required=True, type=Path, help="Path to 04_clustering directory")
+    parser.add_argument("--clusterer", choices=[CLUSTERER_HDBSCAN, CLUSTERER_KMEANS], default=DEFAULT_CLUSTERER)
+    parser.add_argument("--k", type=int, default=DEFAULT_KMEANS_K, help="k-means cluster count (k-means only)")
     parser.add_argument("--umap-n-neighbors", type=int, default=15)
     parser.add_argument("--umap-n-components", type=int, default=5)
     parser.add_argument("--hdbscan-min-cluster-size", type=int, default=10)
@@ -212,6 +219,40 @@ def build_topic_model(args: argparse.Namespace):
         calculate_probabilities=True,
         verbose=False,
     )
+
+
+def build_kmeans_clusters_df(
+    target_rows: pd.DataFrame,
+    embeddings: np.ndarray,
+    *,
+    k: int,
+    random_state: int,
+) -> tuple[pd.DataFrame, int]:
+    from sklearn.cluster import KMeans
+
+    effective_k = min(k, len(target_rows))
+    if len(target_rows) == 0:
+        return pd.DataFrame(columns=CLUSTER_COLUMNS), effective_k
+
+    kmeans_model = KMeans(n_clusters=effective_k, random_state=random_state, n_init=10)
+    topics = kmeans_model.fit_predict(embeddings)
+    distances = kmeans_model.transform(embeddings)
+    logits = -distances / DEFAULT_KMEANS_TEMPERATURE
+    logits = logits - logits.max(axis=1, keepdims=True)
+    exp_logits = np.exp(logits)
+    probabilities = exp_logits / exp_logits.sum(axis=1, keepdims=True)
+    probability_values = probabilities[np.arange(len(topics)), topics].tolist()
+
+    clusters_df = pd.DataFrame(
+        {
+            "response_id": target_rows["response_id"].astype(str).tolist(),
+            "question_id": target_rows["question_id"].astype(str).tolist(),
+            "topic_id": topics.tolist(),
+            "topic_probability": probability_values,
+            "is_outlier": [False] * len(topics),
+        }
+    )
+    return clusters_df[CLUSTER_COLUMNS], effective_k
 
 
 def build_clusters_df(target_rows: pd.DataFrame, topics: list[int], probabilities: np.ndarray | None) -> pd.DataFrame:
@@ -267,13 +308,28 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     clusters_path = args.output_dir / "clusters.csv"
     metadata_path = args.output_dir / "clustering_metadata.json"
-    requested_parameters = {
-        "umap_n_neighbors": args.umap_n_neighbors,
-        "umap_n_components": args.umap_n_components,
-        "hdbscan_min_cluster_size": args.hdbscan_min_cluster_size,
-        "hdbscan_min_samples": args.hdbscan_min_samples,
-        "random_state": args.random_state,
-    }
+    effective_k = min(args.k, len(target_rows)) if args.clusterer == CLUSTERER_KMEANS else None
+    fallback_mode = "empty" if len(target_rows) == 0 else "single_document_fallback" if len(target_rows) == 1 else None
+    requested_parameters = (
+        {
+            "clusterer": args.clusterer,
+            "k": effective_k,
+            "temperature": DEFAULT_KMEANS_TEMPERATURE,
+            "random_state": args.random_state,
+            **({"mode": fallback_mode} if fallback_mode is not None else {}),
+        }
+        if args.clusterer == CLUSTERER_KMEANS
+        else {
+            "clusterer": args.clusterer,
+            "k": None,
+            "umap_n_neighbors": args.umap_n_neighbors,
+            "umap_n_components": args.umap_n_components,
+            "hdbscan_min_cluster_size": args.hdbscan_min_cluster_size,
+            "hdbscan_min_samples": args.hdbscan_min_samples,
+            "random_state": args.random_state,
+            **({"mode": fallback_mode} if fallback_mode is not None else {}),
+        }
+    )
 
     if (
         not args.force
@@ -290,6 +346,7 @@ def main() -> None:
             append_jsonl(
                 {
                     "event": "clustering_reused",
+                    "clusterer": args.clusterer,
                     "input": str(args.input),
                     "embeddings": str(args.embeddings),
                     "output_dir": str(args.output_dir),
@@ -306,23 +363,39 @@ def main() -> None:
         model_params = requested_parameters
     elif len(target_rows) == 1:
         clusters_df = build_single_topic_df(target_rows)
-        model_params = {"mode": "single_document_fallback", "random_state": args.random_state}
+        model_params = requested_parameters
     else:
-        args.umap_n_neighbors = min(args.umap_n_neighbors, max(2, len(target_rows) - 1))
-        args.umap_n_components = min(args.umap_n_components, embeddings.shape[1], len(target_rows) - 1)
-        args.hdbscan_min_cluster_size = min(args.hdbscan_min_cluster_size, len(target_rows))
-        args.hdbscan_min_samples = min(args.hdbscan_min_samples, max(1, len(target_rows) - 1))
-        topic_model = build_topic_model(args)
-        docs = target_rows["answer_text"].astype(str).tolist()
-        topics, probabilities = topic_model.fit_transform(docs, embeddings)
-        clusters_df = build_clusters_df(target_rows, topics, probabilities)
-        model_params = {
-            "umap_n_neighbors": args.umap_n_neighbors,
-            "umap_n_components": args.umap_n_components,
-            "hdbscan_min_cluster_size": args.hdbscan_min_cluster_size,
-            "hdbscan_min_samples": args.hdbscan_min_samples,
-            "random_state": args.random_state,
-        }
+        if args.clusterer == CLUSTERER_KMEANS:
+            clusters_df, effective_k = build_kmeans_clusters_df(
+                target_rows,
+                embeddings,
+                k=args.k,
+                random_state=args.random_state,
+            )
+            model_params = {
+                "clusterer": args.clusterer,
+                "k": effective_k,
+                "temperature": DEFAULT_KMEANS_TEMPERATURE,
+                "random_state": args.random_state,
+            }
+        else:
+            args.umap_n_neighbors = min(args.umap_n_neighbors, max(2, len(target_rows) - 1))
+            args.umap_n_components = min(args.umap_n_components, embeddings.shape[1], len(target_rows) - 1)
+            args.hdbscan_min_cluster_size = min(args.hdbscan_min_cluster_size, len(target_rows))
+            args.hdbscan_min_samples = min(args.hdbscan_min_samples, max(1, len(target_rows) - 1))
+            topic_model = build_topic_model(args)
+            docs = target_rows["answer_text"].astype(str).tolist()
+            topics, probabilities = topic_model.fit_transform(docs, embeddings)
+            clusters_df = build_clusters_df(target_rows, topics, probabilities)
+            model_params = {
+                "clusterer": args.clusterer,
+                "k": None,
+                "umap_n_neighbors": args.umap_n_neighbors,
+                "umap_n_components": args.umap_n_components,
+                "hdbscan_min_cluster_size": args.hdbscan_min_cluster_size,
+                "hdbscan_min_samples": args.hdbscan_min_samples,
+                "random_state": args.random_state,
+            }
 
     cluster_errors = run_cluster_validations(clusters_df)
     if cluster_errors:
@@ -347,6 +420,7 @@ def main() -> None:
         append_jsonl(
             {
                 "event": "clustering",
+                "clusterer": args.clusterer,
                 "input": str(args.input),
                 "embeddings": str(args.embeddings),
                 "output_dir": str(args.output_dir),

@@ -32,6 +32,15 @@ python scripts/curation.py --input projects/your_project_name/02_screening/scree
 python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --topic-category-mapping projects/your_project_name/questions/Q1/05_curation/topic_category_mapping.csv --output-dir projects/your_project_name/questions/Q1/06_classification
 ```
 
+k-means が標準で、`topic_probability` は `softmax(-d_i / 1.0)` による距離ベースの割り当て強度を使う。  
+HDBSCAN を試す場合だけ `--clusterer hdbscan` を付ける。
+
+```bash
+python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
+python scripts/curation.py --input projects/your_project_name/02_screening/screened_responses.csv --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/05_curation
+python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --topic-category-mapping projects/your_project_name/questions/Q1/05_curation/topic_category_mapping.csv --output-dir projects/your_project_name/questions/Q1/06_classification
+```
+
 `clustering.py` は `clusters.csv` と `clustering_metadata.json` を出す。  
 `curation.py` は `cluster_representatives.csv` を出す。  
 未作成時だけ `topic_category_mapping.csv` の雛形と `category_master.csv` のヘッダも置く。  

@@ -14,6 +14,7 @@ from screening import SCREENED_COLUMNS, run_validations as run_screened_validati
 
 CLUSTER_COLUMNS = ["response_id", "question_id", "topic_id", "topic_probability", "is_outlier"]
 DEFAULT_KMEANS_K = 21
+DEFAULT_KMEANS_TEMPERATURE = 1.0
 CLUSTERER_HDBSCAN = "hdbscan"
 CLUSTERER_KMEANS = "kmeans"
 CLUSTERING_METADATA_KEYS = [
@@ -235,12 +236,11 @@ def build_kmeans_clusters_df(
     kmeans_model = KMeans(n_clusters=effective_k, random_state=random_state, n_init=10)
     topics = kmeans_model.fit_predict(embeddings)
     distances = kmeans_model.transform(embeddings)
-    assigned_distances = distances[np.arange(len(topics)), topics]
-    max_distance = float(assigned_distances.max()) if len(assigned_distances) > 0 else 0.0
-    if max_distance <= 0:
-        probability_values = [1.0] * len(topics)
-    else:
-        probability_values = np.clip(1.0 - (assigned_distances / max_distance), 0.0, 1.0).tolist()
+    logits = -distances / DEFAULT_KMEANS_TEMPERATURE
+    logits = logits - logits.max(axis=1, keepdims=True)
+    exp_logits = np.exp(logits)
+    probabilities = exp_logits / exp_logits.sum(axis=1, keepdims=True)
+    probability_values = probabilities[np.arange(len(topics)), topics].tolist()
 
     clusters_df = pd.DataFrame(
         {
@@ -313,6 +313,7 @@ def main() -> None:
         {
             "clusterer": args.clusterer,
             "k": effective_k,
+            "temperature": DEFAULT_KMEANS_TEMPERATURE,
             "random_state": args.random_state,
             **({"mode": fallback_mode} if fallback_mode is not None else {}),
         }
@@ -373,6 +374,7 @@ def main() -> None:
             model_params = {
                 "clusterer": args.clusterer,
                 "k": effective_k,
+                "temperature": DEFAULT_KMEANS_TEMPERATURE,
                 "random_state": args.random_state,
             }
         else:

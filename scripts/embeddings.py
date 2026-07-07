@@ -239,7 +239,12 @@ def request_embeddings(
                     )
                 if attempt >= max_retries:
                     failure_frames.append(build_failure_rows(batch_df, exc))
-                    break
+                    failures_df = (
+                        pd.concat(failure_frames, ignore_index=True)
+                        if failure_frames
+                        else pd.DataFrame(columns=FAILURE_COLUMNS)
+                    )
+                    return np.asarray(vectors, dtype=np.float32), failures_df
                 time.sleep(retry_base_seconds * (2**attempt))
                 attempt += 1
 

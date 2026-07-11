@@ -187,7 +187,7 @@ embeddings = [item.embedding for item in response.data]
 
 クラスタリング後は、各クラスタから代表回答を取り出す。
 
-代表回答は `topic_probability` の高い順に抽出し、クラスタ中心に近い典型的な回答を確認する。あわせて `topic_size` を見て、クラスタの大きさを確認する。
+代表回答は `topic_probability` の高い順に抽出し、他クラスタとの比較で割り当てが明確な典型的回答を確認する。あわせて `topic_size` を見て、クラスタの大きさを確認する。
 
 ---
 

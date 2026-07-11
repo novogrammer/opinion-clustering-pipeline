@@ -9,7 +9,7 @@
 - `04_clustering/` の補助成果物は `clustering_metadata.json`
 - `05_curation/` の補助成果物は `curation_metadata.json`
 - `06_classification/` の補助成果物は `classification_metadata.json`
-- `cluster_representatives.csv` には各 `topic_id` のクラスタ中心に近い代表回答と `topic_size` が入る
+- `cluster_representatives.csv` には各 `topic_id` の `topic_probability` が高い代表回答と `topic_size` が入る
 - sample には、複数 topic を同じ category に統合する例と、HDBSCAN 使用時を想定した `topic_id=-1` の outlier 例を含めている
 - `category_master.csv` は人が作成・編集する確定版で、`curation.py` は上書きしない
 - `topic_category_mapping.csv` は人が作成・編集する確定版で、`curation.py` は未作成時だけ雛形を置き、その後は上書きしない

@@ -154,7 +154,7 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 手順:
 
 1. `python scripts/curation.py ...` を実行して `cluster_representatives.csv` を作る
-2. `topic_id` ごとにクラスタ中心に近い代表回答と `topic_size` を見て、クラスタの意味と大きさを確認する
+2. `topic_id` ごとに `topic_probability` が高い代表回答と `topic_size` を見て、クラスタの意味と大きさを確認する
 3. 同じ意味の山は、同じ `category_id` に統合してよい
 4. `category_master.csv` に正式なカテゴリ辞書を作る
 5. `topic_category_mapping.csv` に `topic_id -> category_id` を記録する

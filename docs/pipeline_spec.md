@@ -545,14 +545,14 @@ HDBSCAN は比較用オプションとし、使う場合だけ `--clusterer hdbs
 方針:
 
 - `curation` は `clusters.csv` からクラスタごとの代表回答を抽出する
-- 代表回答は `topic_probability` の高い順に抽出し、クラスタ中心に近い典型的な回答を確認対象とする
+- 代表回答は `topic_probability` の高い順に抽出し、割り当てが明確な典型的回答を確認対象とする
 - 人は `cluster_representatives.csv` を見て `category_master.csv` を作成・編集して確定版にする
 - 人は `topic_id -> category_id` の対応を `topic_category_mapping.csv` に記録する
 - 複数 `topic_id` を同じ `category_id` に統合できる
 - 1 つの `topic_id` を複数カテゴリへ分割することは標準フローでは扱わない
 - 補助UIを使う場合は、`cluster_representatives.csv` を入力にして `topic_category_mapping.csv` と `category_master.csv` を編集・再出力してよい
-- `curation` は `category_master.csv` を自動生成・上書きしない
-- `curation` は `topic_category_mapping.csv` を自動生成・上書きしない
+- `curation` は未作成時だけ `category_master.csv` のヘッダを置き、既存ファイルは上書きしない
+- `curation` は未作成時だけ通常 topic 一覧を含む `topic_category_mapping.csv` の雛形を置き、既存ファイルは上書きしない
 
 ---
 
@@ -587,8 +587,6 @@ HDBSCAN は比較用オプションとし、使う場合だけ `--clusterer hdbs
 - `topic_id`
 - `predicted_category_id`
 - `predicted_category_name`
-- `reason`
-- `needs_human_review`
 
 補助成果物:
 

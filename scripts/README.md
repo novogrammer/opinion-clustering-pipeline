@@ -38,7 +38,7 @@ HDBSCAN は比較用オプションとし、使う場合だけ `--clusterer hdbs
 `clustering.py` は `clusters.csv` と `clustering_metadata.json` を出す。  
 `curation.py` は `cluster_representatives.csv` を出す。  
 未作成時だけ `topic_category_mapping.csv` の雛形と `category_master.csv` のヘッダも置く。  
-`cluster_representatives.csv` では `topic_id` ごとのクラスタ中心に近い代表回答と `topic_size` を見る。
+`cluster_representatives.csv` では `topic_id` ごとの `topic_probability` が高い代表回答と `topic_size` を見る。
 人はその 1 CSV を見て `category_master.csv` と `topic_category_mapping.csv` を作成・編集し、`classification.py` へ渡す。  
 ブラウザ内で編集したい場合は `tools/curation_ui/index.html` を開き、`cluster_representatives.csv` を読み込む。  
 このUIは `topic_category_mapping.csv` と `category_master.csv` を再読込でき、標準仕様のままダウンロードする。  

@@ -37,7 +37,7 @@
 
 背景説明と知見の補足。
 
-- Embedding と BERTopic の役割分担
+- Embedding と k-means の役割分担
 - 採用モデルの考え方
 - 実測メモ
 - 実務フロー上の注意点

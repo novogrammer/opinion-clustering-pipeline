@@ -32,19 +32,13 @@ python scripts/curation.py --input projects/your_project_name/02_screening/scree
 python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --topic-category-mapping projects/your_project_name/questions/Q1/05_curation/topic_category_mapping.csv --output-dir projects/your_project_name/questions/Q1/06_classification
 ```
 
-k-means が標準で、`topic_probability` は `softmax(-d_i / 1.0)` による距離ベースの割り当て強度を使う。  
-HDBSCAN を試す場合だけ `--clusterer hdbscan` を付ける。
-
-```bash
-python scripts/clustering.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --embeddings projects/your_project_name/questions/Q1/03_embeddings/embeddings.npy --output-dir projects/your_project_name/questions/Q1/04_clustering
-python scripts/curation.py --input projects/your_project_name/02_screening/screened_responses.csv --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --question-id Q1 --output-dir projects/your_project_name/questions/Q1/05_curation
-python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --topic-category-mapping projects/your_project_name/questions/Q1/05_curation/topic_category_mapping.csv --output-dir projects/your_project_name/questions/Q1/06_classification
-```
+k-means / `k=100` が標準で、約1万件では平均約100回答 / クラスタになる想定。回答件数や必要なカテゴリ粒度が大きく異なる場合だけ `--k` を調整する。`topic_probability` は `softmax(-d_i / 1.0)` による距離ベースの割り当て強度で、分類確率ではない。
+HDBSCAN は比較用オプションとし、使う場合だけ `--clusterer hdbscan` を付ける。
 
 `clustering.py` は `clusters.csv` と `clustering_metadata.json` を出す。  
 `curation.py` は `cluster_representatives.csv` を出す。  
 未作成時だけ `topic_category_mapping.csv` の雛形と `category_master.csv` のヘッダも置く。  
-`cluster_representatives.csv` では `topic_id` ごとの代表回答と `topic_size` を見る。  
+`cluster_representatives.csv` では `topic_id` ごとのクラスタ中心に近い代表回答と `topic_size` を見る。
 人はその 1 CSV を見て `category_master.csv` と `topic_category_mapping.csv` を作成・編集し、`classification.py` へ渡す。  
 ブラウザ内で編集したい場合は `tools/curation_ui/index.html` を開き、`cluster_representatives.csv` を読み込む。  
 このUIは `topic_category_mapping.csv` と `category_master.csv` を再読込でき、標準仕様のままダウンロードする。  
@@ -61,5 +55,5 @@ sample の対応関係:
 - `templates/question/05_curation/topic_category_mapping.sample.csv`
 
 この組み合わせで `classification.py` を実行すると、`templates/question/06_classification/final_labels.sample.csv` と同じ列構成の出力を確認できる。  
-sample には、複数 topic の統合と `topic_id=-1` の outlier を含めている。  
+sample には、複数 topic の統合と、HDBSCAN 使用時を想定した `topic_id=-1` の outlier を含めている。
 `topic_category_mapping.sample.csv` を書き換えれば、未対応 topic の失敗も確認できる。

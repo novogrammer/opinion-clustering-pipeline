@@ -15,7 +15,7 @@
 
 ルール:
 
-- `topic_id=-1` は outlier として表示するが、mapping には出力しない
+- HDBSCAN 使用時の `topic_id=-1` は outlier として表示するが、mapping には出力しない
 - 通常 topic は未割当のままダウンロードできない
 - 複数 topic を同じ `category_id` に統合してよい
 - 出力CSVの列は標準仕様に合わせて固定する

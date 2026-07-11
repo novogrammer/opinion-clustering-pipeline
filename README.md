@@ -105,7 +105,7 @@ python scripts/curation.py --input projects/your_project_name/02_screening/scree
 python scripts/classification.py --input projects/your_project_name/02_screening/screened_responses.csv --question-id Q1 --clusters projects/your_project_name/questions/Q1/04_clustering/clusters.csv --category-master projects/your_project_name/questions/Q1/05_curation/category_master.csv --topic-category-mapping projects/your_project_name/questions/Q1/05_curation/topic_category_mapping.csv --output-dir projects/your_project_name/questions/Q1/06_classification
 ```
 
-`clustering.py` の標準は `kmeans` / `k=100` にする。`hdbscan` を使う場合だけ `--clusterer hdbscan` を明示する。
+`clustering.py` の標準は `kmeans` / `k=100` にする。約1万件では平均約100回答 / クラスタになる想定で、回答件数や必要なカテゴリ粒度が大きく異なる場合だけ `--k` を調整する。HDBSCAN は比較用オプションとし、使う場合だけ `--clusterer hdbscan` を明示する。
 
 `normalize.py` の標準機能は、1 CSV を標準4列へ写像する単純な列対応までとする。  
 `00_raw -> 01_processed` がそれで済まないプロジェクトは、Codex がプロジェクト別スクリプトをその都度作る。
@@ -141,19 +141,20 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 ## 運用の推奨
 
 - embedding は `text-embedding-3-small` をデフォルトにしつつ、予算が許すなら `text-embedding-3-large` を優先して比較する
-- clustering は `topic_id=-1` を減らす方向でパラメータを探る
-- clustering の単一変更では、`hdbscan_min_samples` より `umap_n_neighbors` と `umap_n_components` の影響が大きいことが多い
+- k-means は `k=100` を標準とし、回答件数や必要なカテゴリ粒度が大きく異なる場合だけ `--k` を調整する
+- HDBSCAN を比較する場合は、`topic_id=-1` の割合も確認する
+- HDBSCAN の単一変更では、`hdbscan_min_samples` より `umap_n_neighbors` と `umap_n_components` の影響が大きいことが多い
 
 この方針は標準フローを置き換えるものではなく、比較実験の優先順位を決めるための目安とする。
 
 ## 05_curation の進め方
 
-`05_curation` は、人が BERTopic の山に業務上のカテゴリ名を付ける段階。
+`05_curation` は、人が k-means クラスタに業務上のカテゴリ名を付ける段階。
 
 手順:
 
 1. `python scripts/curation.py ...` を実行して `cluster_representatives.csv` を作る
-2. `topic_id` ごとに代表回答と `topic_size` を見て、山の意味と大きさを確認する
+2. `topic_id` ごとにクラスタ中心に近い代表回答と `topic_size` を見て、クラスタの意味と大きさを確認する
 3. 同じ意味の山は、同じ `category_id` に統合してよい
 4. `category_master.csv` に正式なカテゴリ辞書を作る
 5. `topic_category_mapping.csv` に `topic_id -> category_id` を記録する
@@ -163,7 +164,7 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 
 - 1 `topic_id` は 1 `category_id` にだけ対応させる
 - 複数 `topic_id` を同じ `category_id` に統合してよい
-- `topic_id=-1` は書かない
+- HDBSCAN 使用時の `topic_id=-1` は書かない
 - 通常 topic は未対応のまま残さない
 
 `category_master.csv` の記入ルール:
@@ -172,7 +173,7 @@ python scripts/classification.py --input projects/your_project_name/02_screening
 - `category_name` は集計・報告で使う正式名称にする
 - `category_definition` は、そのカテゴリに含める意図が分かる短い説明にする
 
-sample では、`topic_id=0` と `topic_id=2` を同じ `CAT001` に統合する例と、`topic_id=-1` が `OTHER` に落ちる例を含めている。
+sample では、`topic_id=0` と `topic_id=2` を同じ `CAT001` に統合する例と、HDBSCAN 使用時の `topic_id=-1` が `OTHER` に落ちる例を含めている。
 
 ローカルHTMLツールを使う場合:
 

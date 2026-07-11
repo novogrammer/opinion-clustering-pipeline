@@ -53,6 +53,8 @@ idna==3.18
     # via
     #   anyio
     #   httpx
+iniconfig==2.3.0
+    # via pytest
 jinja2==3.1.6
     # via torch
 jiter==0.16.0
@@ -103,6 +105,7 @@ packaging==26.2
     # via
     #   huggingface-hub
     #   plotly
+    #   pytest
     #   transformers
 pandas==3.0.3
     # via
@@ -110,14 +113,20 @@ pandas==3.0.3
     #   bertopic
 plotly==6.8.0
     # via bertopic
+pluggy==1.6.0
+    # via pytest
 pydantic==2.13.4
     # via openai
 pydantic-core==2.46.4
     # via pydantic
 pygments==2.20.0
-    # via rich
+    # via
+    #   pytest
+    #   rich
 pynndescent==0.6.0
     # via umap-learn
+pytest==9.1.1
+    # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via pandas
 python-dotenv==1.2.2

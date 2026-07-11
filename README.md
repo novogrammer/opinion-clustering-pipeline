@@ -189,6 +189,12 @@ CLI 一覧は `scripts/README.md` を参照。
 
 詳細仕様は `docs/README.md` を入口として参照。
 
+## テスト
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
 ## License
 
 MIT

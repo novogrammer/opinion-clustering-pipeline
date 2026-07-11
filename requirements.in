@@ -6,3 +6,4 @@ bertopic
 umap-learn
 hdbscan
 scikit-learn
+pytest

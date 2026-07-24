@@ -6,16 +6,16 @@
 
 前提:
 
+- `uv`
 - Python `3.11`
-- 仮想環境は `venv`
-- 依存管理は `requirements.in` + `requirements.txt`
+- 仮想環境はプロジェクト直下の `.venv`
+- 依存管理は `pyproject.toml` + `uv.lock`
 
 セットアップ:
 
 ```bash
-python3.11 -m venv .venv
+uv sync --locked
 source .venv/bin/activate
-pip install -r requirements.txt
 ```
 
 API 設定:
@@ -33,19 +33,41 @@ OPENAI_API_KEY=sk-...
 
 ルール:
 
-- `requirements.in` は人が編集する最小依存
-- `requirements.txt` は固定版の lock ファイル
-- `requirements.txt` は `pip-compile` で `requirements.in` から生成する
-- `requirements.in` を編集したら `requirements.txt` を再生成する
+- 直接依存は `pyproject.toml` で管理する
+- 固定版は `uv.lock` で管理し、Git に含める
+- `uv.lock` は直接編集しない
+- テスト用依存は `dependency-groups.dev` で管理する
+- `uv sync` と `uv run` では `dev` グループも標準で同期される
 
-`requirements.txt` の再生成:
+実行時依存の追加・削除:
 
 ```bash
-source .venv/bin/activate
-pip-compile requirements.in -o requirements.txt
+uv add package-name
+uv remove package-name
 ```
 
-`requirements.in` を更新したら、その後に `pip install -r requirements.txt` を実行する。
+テスト用依存の追加:
+
+```bash
+uv add --dev package-name
+```
+
+特定パッケージだけ更新:
+
+```bash
+uv lock --upgrade-package package-name
+uv sync
+```
+
+全依存を更新:
+
+```bash
+uv lock --upgrade
+uv sync
+.venv/bin/python -m pytest -q
+```
+
+ロック済みの実行時依存だけを同期する場合は `uv sync --locked --no-dev` を使う。
 
 ## ディレクトリ構成
 

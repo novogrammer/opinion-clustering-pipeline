@@ -1,0 +1,21 @@
+[project]
+name = "opinion-clustering-pipeline"
+version = "0.1.0"
+description = "自由記述回答の分類パイプライン"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "bertopic",
+    "hdbscan",
+    "numpy",
+    "openai",
+    "pandas",
+    "python-dotenv",
+    "scikit-learn",
+    "umap-learn",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]

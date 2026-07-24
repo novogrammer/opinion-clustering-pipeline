@@ -1,9 +1,0 @@
-pandas
-openai
-python-dotenv
-numpy
-bertopic
-umap-learn
-hdbscan
-scikit-learn
-pytest
